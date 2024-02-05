@@ -12,9 +12,12 @@ dnspython==2.5.0
 frozenlist==1.4.1
 fuzzywuzzy==0.18.0
 idna==3.6
+kaleido==0.2.1
 Levenshtein==0.24.0
 motor==3.3.2
 multidict==6.0.5
+packaging==23.2
+plotly==5.18.0
 progressbar==2.5
 pydantic==2.6.0
 pydantic_core==2.16.1
@@ -22,6 +25,7 @@ pymongo==4.6.1
 python-dotenv==1.0.1
 python-Levenshtein==0.24.0
 rapidfuzz==3.6.1
+tenacity==8.2.3
 termcolor==1.1.0
 typing_extensions==4.9.0
 yarl==1.9.4
