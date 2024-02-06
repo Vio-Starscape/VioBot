@@ -6,7 +6,7 @@ from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from .marketinstance import MarketInstance
 from .iteminstance import ItemInstance
-from .changeinstance import MarketHistoryInstance
+from .historyinstance import MarketHistoryInstance
 
 logger = logging.getLogger(__name__)
 

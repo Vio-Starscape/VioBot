@@ -31,9 +31,9 @@ class Vio(commands.Bot):
         await self.load_extension("ext.Market")
 
         # Testing
-        guild = discord.Object(id=971952765955895317)
-        self.tree.copy_global_to(guild=guild)
-        await self.tree.sync(guild=guild)
+        # guild = discord.Object(id=971952765955895317)
+        # self.tree.copy_global_to(guild=guild)
+        # await self.tree.sync(guild=guild)
 
 
 if __name__ == "__main__":

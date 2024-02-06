@@ -3,7 +3,6 @@ import logging
 from discord import app_commands
 from discord.ext import commands
 from fuzzywuzzy import process
-from vio import ItemInstance
 from main import Vio
 
 logger = logging.getLogger(__name__)
@@ -36,7 +35,7 @@ class Market(commands.Cog, name="Market"):
         if item != "":
             return [
                 app_commands.Choice(name=item[0], value=item[0]) 
-                for item in process.extract(item, self.bot.items, limit=25)
+                for item in process.extractBests(item, self.bot.items, limit=25)
                 ]
         return [
             app_commands.Choice(name=item, value=item) 
