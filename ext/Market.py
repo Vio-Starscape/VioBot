@@ -7,7 +7,7 @@ from main import Vio
 
 logger = logging.getLogger(__name__)
 
-class Market(commands.Cog, name="Market"):
+class Market(commands.GroupCog, name="market"):
     
     def __init__(self, bot: Vio):
         self.bot = bot
@@ -42,6 +42,43 @@ class Market(commands.Cog, name="Market"):
             for item in self.bot.items[:25]
             ]
     
+    @app_commands.command()
+    async def user(self, interaction: discord.Interaction, user: int):
+        """Get information about a user."""
+        if user not in [roblox_user.id for roblox_user in self.bot.roblox_users]:
+            await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
+            return
+        await interaction.response.defer(thinking=True)
+
+        user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == user)
+
+        logger.info(f"Getting information about user: {user} | By: {interaction.user}")
+        user_instance = await self.bot.db.get_current_market_for_user(user)
+        await interaction.followup.send(embed=user_instance.embed, ephemeral=True)
+
+    @user.autocomplete("user")
+    async def user_autocomplete(self, interaction: discord.Interaction, current: str):
+        logger.debug(f"Auto-completing user: {current}")
+
+        response_list = []
+
+        try:
+            user_id = int(current)
+            response_list = [
+                app_commands.Choice(name=user.name, value=user.id) 
+                for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
+                ] + [
+                app_commands.Choice(name=user.name, value=user.id)
+                for user in self.bot.roblox_users if str(user.id).startswith(str(user_id))
+                ]
+        except ValueError:
+            response_list = [
+                app_commands.Choice(name=user.name, value=user.id) 
+                for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
+                ]
+        logger.debug(f"Auto-completed user: {response_list}")
+            
+        return response_list[:25]
 
 async def setup(bot: Vio):
     await bot.add_cog(Market(bot))

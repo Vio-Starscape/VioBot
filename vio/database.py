@@ -4,9 +4,12 @@ import logging
 from datetime import timezone
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
+
 from .marketinstance import MarketInstance
 from .iteminstance import ItemInstance
 from .historyinstance import MarketHistoryInstance
+from .robloxuser import RobloxUser
+from .userinstance import UserInstance
 
 logger = logging.getLogger(__name__)
 
@@ -58,24 +61,25 @@ class VioDB:
 
         logger.debug("Completed updating Roblox users from market!")
 
-    async def validate_timestamp(self, market_data: dict) -> bool:
+    async def validate_timestamp(self, market_data: dict) -> dict:
         logger.debug("Validating timestamp!")
         market_data["time_scanned"] = market_data["time_scanned"].replace(tzinfo=timezone.utc)
         return market_data
 
-    async def insert_roblox_users_to_market(self, market_data: dict, roblox_users: Optional[dict] = None) -> None:
+    async def insert_roblox_users_to_market(self, market_data: dict, roblox_users: Optional[dict] = None, *, update: bool = False) -> None:
         """Insert Roblox Users into the market data.
         
         This function will replace the Vendor ID with a Roblox User Object instead of the ID.
         """
 
         # Will remove in future as writes should be done in the Load Balancer
-        # await self.update_roblox_users_from_market(market_data)
+        if update:
+            await self.update_roblox_users_from_market(market_data)
 
         if roblox_users is None:
             roblox_users = {doc["_id"]: doc async for doc in self.db["Roblox"].find()}
 
-        logger.debug("Inserting Roblox users to market!")
+        logger.debug(f"Inserting Roblox users to market!: {market_data['items']}")
         for value in market_data["items"].values():
             for listing in value["buy"]:
                 listing[2] = roblox_users[listing[2]]
@@ -110,6 +114,35 @@ class VioDB:
         market = await self.get_market_at_index(count)
 
         return market
+    
+    async def get_roblox_users(self) -> list[RobloxUser]:
+        """Get all Roblox Users."""
+        logger.debug("Getting all Roblox Users!")
+        return [RobloxUser(**doc) async for doc in self.db["Roblox"].find()]
+
+    async def get_current_market_for_user(self, user: RobloxUser) -> UserInstance:
+        """Get the latest market scan for a user."""
+        logger.debug(f"Getting current market for user: {user}!")
+
+        market = await self.get_current_market()
+
+        buy_listings = []
+        sell_listings = []
+
+        for item in market:
+            for listing in item.buy:
+                if listing.user == user:
+                    buy_listings.append(listing)
+            for listing in item.sell:
+                if listing.user == user:
+                    sell_listings.append(listing)
+
+        
+        return UserInstance(
+            user=user,
+            buy=buy_listings,
+            sell=sell_listings
+        )
     
     async def get_item_history(self, item: str) -> MarketHistoryInstance:
         """Get the history of an item."""

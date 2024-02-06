@@ -15,15 +15,19 @@ class ItemInstance(BaseModel):
     sell: List[Listing]
 
     @validator('buy', pre=True, always=True)
-    def sort_buy_listings(cls, v):
+    def sort_buy_listings(cls, v, values):
+        name = values.get('name')
         for listing in v:
             listing.append(ListingType.BUY)
+            listing.append(name)
         return v
     
     @validator('sell', pre=True, always=True)
-    def sort_sell_listings(cls, v):
+    def sort_sell_listings(cls, v, values):
+        name = values.get('name')
         for listing in v:
             listing.append(ListingType.SELL)
+            listing.append(name)
         return v
     
     def process_changes(self, initial_instance: "ItemInstance", previous_instance: "ItemInstance") -> Tuple[

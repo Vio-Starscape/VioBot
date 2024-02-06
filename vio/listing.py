@@ -8,6 +8,7 @@ class ListingType(Enum):
     SELL = 2
 
 class Listing(BaseModel):
+    item: str
     price: float
     amount: int
     user: RobloxUser
@@ -21,5 +22,6 @@ class Listing(BaseModel):
                 'amount': values[1],
                 'user': values[2],
                 'type': values[3],
+                'item': values[4]
             }
         return values

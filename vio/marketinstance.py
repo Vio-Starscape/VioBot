@@ -24,4 +24,13 @@ class MarketInstance(BaseModel):
         try:
             return self.items[key]
         except KeyError:
-            return ItemInstance(_id=self.id, time_scanned=self.time_scanned, name=key, buy=[], sell=[])
+            return ItemInstance(
+                _id=self.id,
+                time_scanned=self.time_scanned,
+                name=key,
+                buy=[],
+                sell=[]
+            )
+        
+    def __iter__(self):
+        return iter(self.items.values())
