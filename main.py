@@ -29,11 +29,13 @@ class Vio(commands.Bot):
         await self.db.setup()
         self.items = await self.db.get_item_list()
         self.roblox_users = await self.db.get_roblox_users()
-        await self.load_extension("ext.Market")
+        # await self.load_extension("ext.Market")
+        await self.load_extension("ext.Valuation")
 
         # Testing
         # guild = discord.Object(id=971952765955895317)
         # self.tree.copy_global_to(guild=guild)
+        # self.tree.clear_commands(guild=guild)
         # await self.tree.sync(guild=guild)
         await self.tree.sync()
 
