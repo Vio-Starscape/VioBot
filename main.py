@@ -29,7 +29,7 @@ class Vio(commands.Bot):
         await self.db.setup()
         self.items = await self.db.get_item_list()
         self.roblox_users = await self.db.get_roblox_users()
-        # await self.load_extension("ext.Market")
+        await self.load_extension("ext.Market")
         await self.load_extension("ext.Valuation")
 
         # Testing

@@ -41,6 +41,9 @@ class VioDB:
         if "Evaluation" not in collection_names:
             logger.info("Creating Evaluation collection!")
             await self.db.create_collection("Evaluation")
+        if "Permissions" not in collection_names:
+            logger.info("Creating Permissions collection!")
+            await self.db.create_collection("Permissions")
 
     async def update_roblox_users_from_market(self, market_data: dict) -> None:
         logger.debug("Updating Roblox users from market! (Will be depricated!)")
@@ -188,6 +191,14 @@ class VioDB:
         return list((await self.db["Info"].find_one({"_id": 0}))["items"])
 
     # Vio Testing
+
+    async def is_user_allowed_evaluation(self, user_id: int) -> bool:
+        """Check if a user is allowed to evaluate."""
+        logger.info(f"Checking if user is allowed to evaluate: {user_id}!")
+        perms = await self.db["Permissions"].find_one({"_id": user_id})
+        if perms is None:
+            return False
+        return perms["evaluation"]
 
     async def upload_test_material(self, response: dict, orig_image: Image.Image, pros_image: Image.Image) -> None:
         """Upload test material to the database."""

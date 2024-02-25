@@ -21,10 +21,14 @@ class Market(commands.GroupCog, name="market"):
         await interaction.response.defer(thinking=True)
         logger.info(f"Getting information about item: {item} | By: {interaction.user}")
         items = await self.bot.db.get_item_history(item)
-        latest_item = items[items.max_page]
+        selected = items[items.max_page]
+        for i in range(len(items.item_instances), 0):
+            if items[i].volume != 0:
+                selected = items[i]
+                break
         await interaction.followup.send(
-            view=items.view,
-            embed=latest_item.embed.set_image(url="attachment://graph.png"), 
+            # view=items.view,
+            embed=selected.embed.set_image(url="attachment://graph.png"), 
             ephemeral=True,
             file=await items.graph_between_pages(items.min_page, items.max_page)
         )
@@ -43,21 +47,27 @@ class Market(commands.GroupCog, name="market"):
             ]
     
     @app_commands.command()
-    async def user(self, interaction: discord.Interaction, user: int):
+    async def user(self, interaction: discord.Interaction, vendor: str):
         """Get information about a user."""
-        if user not in [roblox_user.id for roblox_user in self.bot.roblox_users]:
+        try:
+            vendor = int(vendor)
+            if vendor not in [roblox_user.id for roblox_user in self.bot.roblox_users]:
+                await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
+                return
+        except ValueError:
             await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
             return
+        
         await interaction.response.defer(thinking=True)
 
-        user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == user)
+        user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
 
         logger.info(f"Getting information about user: {user} | By: {interaction.user}")
         user_instance = await self.bot.db.get_current_market_for_user(user)
         await interaction.followup.send(embed=user_instance.embed, ephemeral=True)
 
-    @user.autocomplete("user")
-    async def user_autocomplete(self, interaction: discord.Interaction, current: str):
+    @user.autocomplete("vendor")
+    async def user_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
         logger.debug(f"Auto-completing user: {current}")
 
         response_list = []
@@ -65,19 +75,18 @@ class Market(commands.GroupCog, name="market"):
         try:
             user_id = int(current)
             response_list = [
-                app_commands.Choice(name=user.name, value=user.id) 
+                app_commands.Choice(name=user.name, value=str(user.id))
                 for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
                 ] + [
-                app_commands.Choice(name=user.name, value=user.id)
+                app_commands.Choice(name=user.name, value=str(user.id))
                 for user in self.bot.roblox_users if str(user.id).startswith(str(user_id))
                 ]
         except ValueError:
             response_list = [
-                app_commands.Choice(name=user.name, value=user.id) 
+                app_commands.Choice(name=user.name, value=str(user.id)) 
                 for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
                 ]
-        logger.debug(f"Auto-completed user: {response_list}")
-            
+        logger.info(f"Auto-completed user: {response_list}")
         return response_list[:25]
 
 async def setup(bot: Vio):
