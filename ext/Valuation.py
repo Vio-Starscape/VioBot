@@ -120,6 +120,7 @@ class Valuation(commands.Cog):
     async def evaluation(self, interaction: discord.Interaction, inventory: discord.Attachment):
         """Get the valuation of your assets in inventory."""
         if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
+            logger.info(f"User {interaction.user} tried to use the evaluation command.")
             await interaction.response.send_message(
                 "You are not allowed to use this command!\n\n"
                 "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
