@@ -44,6 +44,9 @@ class VioDB:
         if "Permissions" not in collection_names:
             logger.info("Creating Permissions collection!")
             await self.db.create_collection("Permissions")
+        if "Tracking" not in collection_names:
+            logger.info("Creating Tracking collection!")
+            await self.db.create_collection("Tracking")
 
     async def update_roblox_users_from_market(self, market_data: dict) -> None:
         logger.debug("Updating Roblox users from market! (Will be depricated!)")

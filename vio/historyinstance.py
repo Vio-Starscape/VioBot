@@ -1,6 +1,7 @@
 import discord
 import plotly.graph_objects as go
 import plotly.io as pio
+import numpy as np
 from io import BytesIO
 from enum import Enum
 from typing import Dict
@@ -86,11 +87,12 @@ class MarketHistoryInstance:
     async def graph(self) -> discord.File:
         """Graph the entire recorded history of the item."""
         return await self.graph_between_pages(
-            self.min_page,
+            self.max_page-1000,
             self.max_page
         )
+    
 
-    async def graph_between_pages(self, page1: int, page2: int) -> discord.File:
+    async def graph_between_pages(self, page1: int, page2: int, iqr: bool = True) -> discord.File:
         """Graph the difference between two pages."""
         if page1 > page2:
             page1, page2 = page2, page1
@@ -99,10 +101,31 @@ class MarketHistoryInstance:
         if page2 > self.max_page:
             page2 = self.max_page
 
-        pages = [instance for instance in self.item_instances.values() if page1 <= instance.id <= page2]
+        def interQuartileRange(data: list):
+            Q1, Q3 = np.percentile([d for d in data if d is not None], [25, 75])
+            IQR = Q3 - Q1
 
-        timestamps = [instance.time_scanned for instance in pages if page1 <= instance.id <= page2]
-        volumes = [None if instance.volume == 0 else instance.volume for instance in pages if page1 <= instance.id <= page2]
+
+            return [
+                None if d is None else 
+                d if Q1 - 1.5 * IQR <= d <= Q3 + 1.5 * IQR else None 
+                for d in data
+            ]
+
+        pages = [
+            instance for instance in self.item_instances.values() 
+            if page1 <= instance.id <= page2
+        ]
+
+        timestamps = [
+            instance.time_scanned for instance in pages
+            if page1 <= instance.id <= page2
+        ]
+        volumes = [
+            None if instance.volume == 0 else instance.volume 
+            for instance in pages 
+            if page1 <= instance.id <= page2
+        ]
 
         lowest_sells = [
             None if instance.lowest_sell == 0 else instance.lowest_sell 
@@ -114,6 +137,11 @@ class MarketHistoryInstance:
             for instance in pages
             if page1 <= instance.id <= page2
         ]
+
+        if iqr:
+            volumes = interQuartileRange(volumes)
+            lowest_sells = interQuartileRange(lowest_sells)
+            highest_buys = interQuartileRange(highest_buys)
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=timestamps, y=volumes, name='Volume', yaxis='y2', mode='lines', fill='tozeroy'))

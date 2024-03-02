@@ -19,7 +19,7 @@ class Market(commands.GroupCog, name="market"):
             await interaction.response.send_message("I haven't seen that item before! ;-;", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
-        logger.info(f"Getting information about item: {item} | By: {interaction.user}")
+        logger.info(f"Getting information about item: {item} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
         items = await self.bot.db.get_item_history(item)
         selected = items[items.max_page]
         for i in range(len(items.item_instances), 0):
@@ -60,18 +60,16 @@ class Market(commands.GroupCog, name="market"):
         
         await interaction.response.defer(thinking=True)
 
-        user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
+        selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
 
-        logger.info(f"Getting information about user: {user} | By: {interaction.user}")
-        user_instance = await self.bot.db.get_current_market_for_user(user)
-        await interaction.followup.send(embed=user_instance.embed, ephemeral=True)
+        logger.info(f"Getting information about user: {selected_user} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
+        user_instance = await self.bot.db.get_current_market_for_user(selected_user)
+        await interaction.followup.send(embed=user_instance.embed, ephemeral=True, view=user_instance.view(self.bot))
 
     @user.autocomplete("vendor")
     async def user_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
         logger.debug(f"Auto-completing user: {current}")
-
         response_list = []
-
         try:
             user_id = int(current)
             response_list = [
@@ -86,7 +84,6 @@ class Market(commands.GroupCog, name="market"):
                 app_commands.Choice(name=user.name, value=str(user.id)) 
                 for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
                 ]
-        logger.info(f"Auto-completed user: {response_list}")
         return response_list[:25]
 
 async def setup(bot: Vio):
