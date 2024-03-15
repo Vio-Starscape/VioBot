@@ -20,9 +20,6 @@ class MarketHistoryInstance:
     def __getitem__(self, key: int) -> ItemInstance:
         return self.item_instances[key]
     
-    async def process_changes(self, initial_instance: ItemInstance, previous_instance: ItemInstance) -> MarketChangeType:
-        """Process the changes between two instances."""
-    
     async def changes_for(self, page: int) -> discord.Embed:
         """Get the changes for a specific page."""
         if page < (self.min_page+1) or page > self.max_page:

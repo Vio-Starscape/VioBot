@@ -30,7 +30,7 @@ class Vio(commands.Bot):
         self.items = await self.db.get_item_list()
         self.roblox_users = await self.db.get_roblox_users()
         await self.load_extension("ext.Market")
-        await self.load_extension("ext.Valuation")
+        # await self.load_extension("ext.Valuation")
 
         # Testing
         # guild = discord.Object(id=971952765955895317)

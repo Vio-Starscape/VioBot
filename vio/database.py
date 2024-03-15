@@ -1,5 +1,4 @@
 import asyncio
-import aiohttp
 import logging
 from datetime import timezone
 from typing import Optional
@@ -48,31 +47,6 @@ class VioDB:
             logger.info("Creating Tracking collection!")
             await self.db.create_collection("Tracking")
 
-    async def update_roblox_users_from_market(self, market_data: dict) -> None:
-        logger.debug("Updating Roblox users from market! (Will be depricated!)")
-
-        # Getting User IDs
-
-        ids = set()
-        for item in market_data["items"].values():
-            for listing in item["buy"]:
-                ids.add(listing[2])
-            for listing in item["sell"]:
-                ids.add(listing[2])
-
-        existing_ids = {doc["_id"] async for doc in self.db["Roblox"].find({"_id": {"$in": list(ids)}})}
-        ids -= existing_ids
-        # Requesting User Data and updating DB (WILL BE MOVED TO LOAD BALANCER IN FUTURE!)
-        async with aiohttp.ClientSession() as session:
-            async with session.post("https://users.roblox.com/v1/users", json={"userIds": list(ids), "excludeBannedUsers": False}) as response:
-                users = await response.json()
-                logger.debug(f"Got users: {users}")
-                for user in users["data"]:
-                    logger.debug(f"Updating user: {user}")
-                    await self.db["Roblox"].update_one({"_id": user["id"]}, {"$set": user}, upsert=True)
-
-        logger.debug("Completed updating Roblox users from market!")
-
     async def validate_timestamp(self, market_data: dict) -> dict:
         logger.debug("Validating timestamp!")
         market_data["time_scanned"] = market_data["time_scanned"].replace(tzinfo=timezone.utc)
@@ -83,10 +57,6 @@ class VioDB:
         
         This function will replace the Vendor ID with a Roblox User Object instead of the ID.
         """
-
-        # Will remove in future as writes should be done in the Load Balancer
-        if update:
-            await self.update_roblox_users_from_market(market_data)
 
         if roblox_users is None:
             roblox_users = {doc["_id"]: doc async for doc in self.db["Roblox"].find()}
@@ -156,7 +126,7 @@ class VioDB:
             sell=sell_listings
         )
     
-    async def get_item_history(self, item: str) -> MarketHistoryInstance:
+    async def get_item_history(self, item: str, length: int = 1000) -> MarketHistoryInstance:
         """Get the history of an item."""
         logger.debug(f"Getting item history: {item}!")
 
@@ -181,8 +151,11 @@ class VioDB:
         # This is going to greatly reduce the amount of time it takes to process all the data.
         tasks = []
         async for doc in self.db["Market"].find(
-            {"_id": {"$gt": 0}},
-            {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
+                {"_id": {"$gt": 0}},
+                {"_id": 1, "time_scanned": 1, f"items.{item}": 1},
+                sort=[("_id", -1)],
+                limit=length
+                ):
             tasks.append(process_document(doc, item, item_instances, roblox_users))
         await asyncio.gather(*tasks)
 

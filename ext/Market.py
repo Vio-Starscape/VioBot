@@ -19,7 +19,9 @@ class Market(commands.GroupCog, name="market"):
             await interaction.response.send_message("I haven't seen that item before! ;-;", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
-        logger.info(f"Getting information about item: {item} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
+        logger.info(f"Getting information about item: {item} | By: {interaction.user} | "
+                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
+                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
         items = await self.bot.db.get_item_history(item)
         selected = items[items.max_page]
         for i in range(len(items.item_instances), 0):
@@ -62,7 +64,9 @@ class Market(commands.GroupCog, name="market"):
 
         selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
 
-        logger.info(f"Getting information about user: {selected_user} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
+        logger.info(f"Getting information about user: {selected_user} | By: {interaction.user} | "
+                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
+                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
         await interaction.followup.send(embed=user_instance.embed, ephemeral=True, view=user_instance.view(self.bot))
 
