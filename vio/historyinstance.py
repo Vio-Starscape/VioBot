@@ -102,15 +102,20 @@ class MarketHistoryInstance:
             page2 = self.max_page
 
         def interQuartileRange(data: list):
-            Q1, Q3 = np.percentile([d for d in data if d is not None], [25, 75])
+            Q1, Q3 = np.percentile([d for d in data if d is not None], [10, 90])
             IQR = Q3 - Q1
+            
+            info = []
+            for point in data:
+                if point is not None:
+                    if Q1 - 1.5 * IQR <= point <= Q3 + 1.5 * IQR:
+                        info.append(point)
+                    else:
+                        info.append(None)
+                else:
+                    info.append(None)
 
-
-            return [
-                None if d is None else 
-                d if Q1 - 1.5 * IQR <= d <= Q3 + 1.5 * IQR else None 
-                for d in data
-            ]
+            return info
 
         pages = [
             instance for instance in self.item_instances.values() 
@@ -128,12 +133,12 @@ class MarketHistoryInstance:
         ]
 
         lowest_sells = [
-            None if instance.lowest_sell == 0 else instance.lowest_sell 
+            None if instance.average_sell == 0 else instance.average_sell
             for instance in pages 
             if page1 <= instance.id <= page2
         ]
         highest_buys = [
-            None if instance.highest_buy == 0 else instance.highest_buy
+            None if instance.average_buy == 0 else instance.average_buy
             for instance in pages
             if page1 <= instance.id <= page2
         ]
@@ -145,10 +150,11 @@ class MarketHistoryInstance:
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=timestamps, y=volumes, name='Volume', yaxis='y2', mode='lines', fill='tozeroy'))
-        fig.add_trace(go.Scatter(x=timestamps, y=lowest_sells, mode='lines', name='Lowest Sell'))
-        fig.add_trace(go.Scatter(x=timestamps, y=highest_buys, mode='lines', name='Highest Buy'))
+        fig.add_trace(go.Scatter(x=timestamps, y=lowest_sells, mode='lines', name='Average Sell'))
+        fig.add_trace(go.Scatter(x=timestamps, y=highest_buys, mode='lines', name='Average Buy'))
         fig.update_layout(
             title=f"Market Changes for {self.name}",
+            plot_bgcolor='rgba(0,0,0,0)',
             yaxis=dict(
                 title='Price',
                 side='left'

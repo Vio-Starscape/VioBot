@@ -30,7 +30,7 @@ class Market(commands.GroupCog, name="market"):
             # view=items.view,
             embed=selected.embed.set_image(url="attachment://graph.png"), 
             ephemeral=True,
-            file=await items.graph_between_pages(items.min_page, items.max_page)
+            file=await items.graph_between_pages(items.max_page-2000, items.max_page)
         )
 
     @item.autocomplete("item")
@@ -64,7 +64,7 @@ class Market(commands.GroupCog, name="market"):
 
         logger.info(f"Getting information about user: {selected_user} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
-        await interaction.followup.send(embed=user_instance.embed, ephemeral=True, view=user_instance.view(self.bot))
+        await interaction.followup.send(embed=user_instance.embed, ephemeral=True)
 
     @user.autocomplete("vendor")
     async def user_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
