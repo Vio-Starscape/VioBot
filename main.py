@@ -28,12 +28,16 @@ class Vio(commands.Bot):
     async def setup_hook(self) -> None:
         await self.db.setup()
         self.items = await self.db.get_item_list()
+        self.roblox_users = await self.db.get_roblox_users()
         await self.load_extension("ext.Market")
+        await self.load_extension("ext.Valuation")
 
         # Testing
-        guild = discord.Object(id=971952765955895317)
-        self.tree.copy_global_to(guild=guild)
-        await self.tree.sync(guild=guild)
+        # guild = discord.Object(id=971952765955895317)
+        # self.tree.copy_global_to(guild=guild)
+        # self.tree.clear_commands(guild=guild)
+        # await self.tree.sync(guild=guild)
+        await self.tree.sync()
 
 
 if __name__ == "__main__":
@@ -41,5 +45,5 @@ if __name__ == "__main__":
     vio.run(
         os.getenv("BOT_TOKEN"), 
         root_logger=True,
-        log_level=logging.DEBUG
+        log_level=logging.INFO
     )

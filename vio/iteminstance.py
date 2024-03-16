@@ -1,4 +1,5 @@
 import discord
+import numpy as np
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -15,15 +16,19 @@ class ItemInstance(BaseModel):
     sell: List[Listing]
 
     @validator('buy', pre=True, always=True)
-    def sort_buy_listings(cls, v):
+    def sort_buy_listings(cls, v, values):
+        name = values.get('name')
         for listing in v:
             listing.append(ListingType.BUY)
+            listing.append(name)
         return v
     
     @validator('sell', pre=True, always=True)
-    def sort_sell_listings(cls, v):
+    def sort_sell_listings(cls, v, values):
+        name = values.get('name')
         for listing in v:
             listing.append(ListingType.SELL)
+            listing.append(name)
         return v
     
     def process_changes(self, initial_instance: "ItemInstance", previous_instance: "ItemInstance") -> Tuple[
@@ -90,9 +95,6 @@ class ItemInstance(BaseModel):
         else:
             return self.process_changes(self, other)
                 
-
-
-    
     @property
     def buy_volume(self):
         return sum([listing.amount for listing in self.buy])
@@ -110,15 +112,41 @@ class ItemInstance(BaseModel):
         return min([listing.price for listing in self.sell]) if len(self.sell) > 0 else 0
     
     @property
+    def average_sell(self):
+        if len(self.sell) == 0: return 0
+        
+        q1, q3 = np.percentile([listing.price for listing in self.sell], [25, 75])
+        iqr = q3 - q1
+        lower_bound = q1 - (1.5 * iqr)
+        upper_bound = q3 + (1.5 * iqr)
+
+        new_listings = [listing.price for listing in self.sell if lower_bound <= listing.price <= upper_bound]
+
+        return np.average(new_listings) if len(new_listings) > 0 else 0
+    
+    @property
     def highest_buy(self):
         return max([listing.price for listing in self.buy]) if len(self.buy) > 0 else 0
+    
+    @property
+    def average_buy(self):
+        if len(self.buy) == 0: return 0
+
+        q1, q3 = np.percentile([listing.price for listing in self.buy], [25, 75])
+        iqr = q3 - q1
+        lower_bound = q1 - (1.5 * iqr)
+        upper_bound = q3 + (1.5 * iqr)
+
+        new_listings = [listing.price for listing in self.buy if lower_bound <= listing.price <= upper_bound]
+
+        return np.average(new_listings) if len(new_listings) > 0 else 0
     
     @property
     def embed(self):
         item_embed = discord.Embed(title=self.name, color=0x808080)
 
         item_embed.add_field(name="Best Sell Price", value=f"{self.lowest_sell:,.2f}", inline=True)
-        item_embed.add_field(name="Volume", value=f"{self.sell_volume:,}\{self.buy_volume:,}", inline=True)
+        item_embed.add_field(name="Volume", value=f"{self.sell_volume:,}/{self.buy_volume:,}", inline=True)
         item_embed.add_field(name="Best Buy Price", value=f"{self.highest_buy:,.2f}", inline=True)
 
         if len(self.sell) == 0:

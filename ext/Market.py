@@ -3,12 +3,11 @@ import logging
 from discord import app_commands
 from discord.ext import commands
 from fuzzywuzzy import process
-from vio import ItemInstance
 from main import Vio
 
 logger = logging.getLogger(__name__)
 
-class Market(commands.Cog, name="Market"):
+class Market(commands.GroupCog, name="market"):
     
     def __init__(self, bot: Vio):
         self.bot = bot
@@ -20,14 +19,18 @@ class Market(commands.Cog, name="Market"):
             await interaction.response.send_message("I haven't seen that item before! ;-;", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
-        logger.info(f"Getting information about item: {item} | By: {interaction.user}")
+        logger.info(f"Getting information about item: {item} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
         items = await self.bot.db.get_item_history(item)
-        latest_item = items[items.max_page]
+        selected = items[items.max_page]
+        for i in range(len(items.item_instances), 0):
+            if items[i].volume != 0:
+                selected = items[i]
+                break
         await interaction.followup.send(
-            view=items.view,
-            embed=latest_item.embed.set_image(url="attachment://graph.png"), 
+            # view=items.view,
+            embed=selected.embed.set_image(url="attachment://graph.png"), 
             ephemeral=True,
-            file=await items.graph_between_pages(items.min_page, items.max_page)
+            file=await items.graph_between_pages(items.max_page-2000, items.max_page)
         )
 
     @item.autocomplete("item")
@@ -36,13 +39,52 @@ class Market(commands.Cog, name="Market"):
         if item != "":
             return [
                 app_commands.Choice(name=item[0], value=item[0]) 
-                for item in process.extract(item, self.bot.items, limit=25)
+                for item in process.extractBests(item, self.bot.items, limit=25)
                 ]
         return [
             app_commands.Choice(name=item, value=item) 
             for item in self.bot.items[:25]
             ]
     
+    @app_commands.command()
+    async def user(self, interaction: discord.Interaction, vendor: str):
+        """Get information about a user."""
+        try:
+            vendor = int(vendor)
+            if vendor not in [roblox_user.id for roblox_user in self.bot.roblox_users]:
+                await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
+                return
+        except ValueError:
+            await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
+            return
+        
+        await interaction.response.defer(thinking=True)
+
+        selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
+
+        logger.info(f"Getting information about user: {selected_user} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
+        user_instance = await self.bot.db.get_current_market_for_user(selected_user)
+        await interaction.followup.send(embed=user_instance.embed, ephemeral=True)
+
+    @user.autocomplete("vendor")
+    async def user_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        logger.debug(f"Auto-completing user: {current}")
+        response_list = []
+        try:
+            user_id = int(current)
+            response_list = [
+                app_commands.Choice(name=user.name, value=str(user.id))
+                for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
+                ] + [
+                app_commands.Choice(name=user.name, value=str(user.id))
+                for user in self.bot.roblox_users if str(user.id).startswith(str(user_id))
+                ]
+        except ValueError:
+            response_list = [
+                app_commands.Choice(name=user.name, value=str(user.id)) 
+                for user in self.bot.roblox_users if user.name.lower().startswith(current.lower())
+                ]
+        return response_list[:25]
 
 async def setup(bot: Vio):
     await bot.add_cog(Market(bot))
