@@ -180,8 +180,9 @@ class VioDB:
         # This will allow us to run all the tasks at the same time.
         # This is going to greatly reduce the amount of time it takes to process all the data.
         tasks = []
+        current_count = await self.get_current_count()
         async for doc in self.db["Market"].find(
-            {"_id": {"$gt": 0}},
+            {"_id": {"$gt": current_count-2100}},
             {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
             tasks.append(process_document(doc, item, item_instances, roblox_users))
         await asyncio.gather(*tasks)
