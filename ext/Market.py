@@ -21,11 +21,7 @@ class Market(commands.GroupCog, name="market"):
         await interaction.response.defer(thinking=True)
         logger.info(f"Getting information about item: {item} | By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})")
         items = await self.bot.db.get_item_history(item)
-        selected = items[items.max_page]
-        for i in range(len(items.item_instances), 0):
-            if items[i].volume != 0:
-                selected = items[i]
-                break
+        selected = items.latest_usable()
         await interaction.followup.send(
             # view=items.view,
             embed=selected.embed.set_image(url="attachment://graph.png"), 
@@ -38,8 +34,9 @@ class Market(commands.GroupCog, name="market"):
         logger.debug(f"Auto-completing item: {item}")
         if item != "":
             return [
-                app_commands.Choice(name=item[0], value=item[0]) 
-                for item in process.extractBests(item, self.bot.items, limit=25)
+                app_commands.Choice(name=i[0], value=i[0]) 
+                for i in process.extractBests(item, self.bot.items, limit=25)
+                if item.lower() in i[0].lower()
                 ]
         return [
             app_commands.Choice(name=item, value=item) 

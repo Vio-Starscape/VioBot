@@ -94,6 +94,10 @@ class ItemInstance(BaseModel):
             return self.process_changes(other, self)
         else:
             return self.process_changes(self, other)
+        
+    @property
+    def valid(self):
+        return len(self.buy) > 0 or len(self.sell) > 0
                 
     @property
     def buy_volume(self):

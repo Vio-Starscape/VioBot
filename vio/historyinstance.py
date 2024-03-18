@@ -74,6 +74,12 @@ class MarketHistoryInstance:
 
         return change_embed
     
+    def latest_usable(self) -> ItemInstance:
+        for i in range(self.max_page, self.min_page, -1):
+            if self.item_instances[i].valid:
+                return self.item_instances[i]
+        return self.item_instances[self.max_page]
+    
     @property
     def view(self) -> "MarketChangeView":
         return MarketChangeView(self)
@@ -144,9 +150,9 @@ class MarketHistoryInstance:
         ]
 
         if iqr:
-            volumes = interQuartileRange(volumes)
-            lowest_sells = interQuartileRange(lowest_sells)
-            highest_buys = interQuartileRange(highest_buys)
+            if any(volumes): volumes = interQuartileRange(volumes)
+            if any(lowest_sells): lowest_sells = interQuartileRange(lowest_sells)
+            if any(highest_buys): highest_buys = interQuartileRange(highest_buys)
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=timestamps, y=volumes, name='Volume', yaxis='y2', mode='lines', fill='tozeroy'))
