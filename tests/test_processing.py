@@ -37,15 +37,15 @@ class TestOCR(unittest.TestCase):
                 try:
                     data.append([name, int(amount if amount else 0)])
                 except ValueError:
-                    Image.fromarray(processed_img_amount).save("error.png")
+                    # Image.fromarray(processed_img_amount).save("error.png")
                     raise
 
             for x, y in zip(data, response):
                 try:
                     self.assertEquals(x, y)
                 except AssertionError:
-                    Image.fromarray(imgs[x[0]][0]).save("error.png")
-                    Image.fromarray(imgs[x[0]][1]).save("error2.png")
+                    # Image.fromarray(imgs[x[0]][0]).save("error.png")
+                    # Image.fromarray(imgs[x[0]][1]).save("error2.png")
                     raise
 
 if __name__ == "__main__":
