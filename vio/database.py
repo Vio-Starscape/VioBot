@@ -57,7 +57,6 @@ class VioDB:
         
         This function will replace the Vendor ID with a Roblox User Object instead of the ID.
         """
-
         if roblox_users is None:
             roblox_users = {doc["_id"]: doc async for doc in self.db["Roblox"].find()}
 
@@ -126,7 +125,8 @@ class VioDB:
             sell=sell_listings
         )
     
-    async def get_item_history(self, item: str, length: int = 1000) -> MarketHistoryInstance:
+    async def get_item_history(self, item: str) -> MarketHistoryInstance:
+
         """Get the history of an item."""
         logger.debug(f"Getting item history: {item}!")
 
@@ -150,12 +150,10 @@ class VioDB:
         # This will allow us to run all the tasks at the same time.
         # This is going to greatly reduce the amount of time it takes to process all the data.
         tasks = []
+        current_count = await self.get_current_count()
         async for doc in self.db["Market"].find(
-                {"_id": {"$gt": 0}},
-                {"_id": 1, "time_scanned": 1, f"items.{item}": 1},
-                sort=[("_id", -1)],
-                limit=length
-                ):
+            {"_id": {"$gt": current_count-2100}},
+            {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
             tasks.append(process_document(doc, item, item_instances, roblox_users))
         await asyncio.gather(*tasks)
 

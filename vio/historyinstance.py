@@ -71,6 +71,12 @@ class MarketHistoryInstance:
 
         return change_embed
     
+    def latest_usable(self) -> ItemInstance:
+        for i in range(self.max_page, self.min_page, -1):
+            if self.item_instances[i].valid:
+                return self.item_instances[i]
+        return self.item_instances[self.max_page]
+    
     @property
     def view(self) -> "MarketChangeView":
         return MarketChangeView(self)
@@ -125,27 +131,28 @@ class MarketHistoryInstance:
         ]
 
         lowest_sells = [
-            None if instance.lowest_sell == 0 else instance.lowest_sell 
+            None if instance.average_sell == 0 else instance.average_sell
             for instance in pages 
             if page1 <= instance.id <= page2
         ]
         highest_buys = [
-            None if instance.highest_buy == 0 else instance.highest_buy
+            None if instance.average_buy == 0 else instance.average_buy
             for instance in pages
             if page1 <= instance.id <= page2
         ]
 
         if iqr:
-            volumes = interQuartileRange(volumes)
-            lowest_sells = interQuartileRange(lowest_sells)
-            highest_buys = interQuartileRange(highest_buys)
+            if any(volumes): volumes = interQuartileRange(volumes)
+            if any(lowest_sells): lowest_sells = interQuartileRange(lowest_sells)
+            if any(highest_buys): highest_buys = interQuartileRange(highest_buys)
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=timestamps, y=volumes, name='Volume', yaxis='y2', mode='lines', fill='tozeroy'))
-        fig.add_trace(go.Scatter(x=timestamps, y=lowest_sells, mode='lines', name='Lowest Sell'))
-        fig.add_trace(go.Scatter(x=timestamps, y=highest_buys, mode='lines', name='Highest Buy'))
+        fig.add_trace(go.Scatter(x=timestamps, y=lowest_sells, mode='lines', name='Average Sell'))
+        fig.add_trace(go.Scatter(x=timestamps, y=highest_buys, mode='lines', name='Average Buy'))
         fig.update_layout(
             title=f"Market Changes for {self.name}",
+            plot_bgcolor='rgba(0,0,0,0)',
             yaxis=dict(
                 title='Price',
                 side='left'

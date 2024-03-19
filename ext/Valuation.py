@@ -9,7 +9,6 @@ from typing import Optional
 
 from io import BytesIO
 from PIL import Image, ImageDraw
-
 from vio import get_info, get_item, modify_ratio
 
 logger = logging.getLogger(__name__)
@@ -184,6 +183,4 @@ class Valuation(commands.Cog):
 
 
 async def setup(bot: Vio):
-
-
     await bot.add_cog(Valuation(bot))
