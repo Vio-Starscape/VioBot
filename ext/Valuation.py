@@ -9,109 +9,9 @@ from typing import Optional
 
 from io import BytesIO
 from PIL import Image, ImageDraw
+from vio import get_info, get_item, modify_ratio
 
 logger = logging.getLogger(__name__)
-
-import aiopytesseract
-from PIL import Image
-from scipy import stats
-from io import BytesIO
-import re
-import numpy as np
-import cv2
-
-CONFIG = {
-    "name": (35, 0, 250, 20),
-    "amount": (340, 15, 381, 34),
-}
-
-def extract_region(image_object: np.ndarray, region: tuple[int, int, int, int]) -> np.ndarray:
-    return image_object[region[1]: region[3], region[0]: region[2]]
-
-def process_image(img: Image, region: tuple[int, int, int, int], amount: bool = False) -> np.ndarray:
-    img = np.array(img)
-    img = extract_region(img, region)
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    img = cv2.bitwise_not(img)
-    img = cv2.resize(img, None, fx=5 if amount else 4, fy=5 if amount else 4, interpolation=cv2.INTER_CUBIC)
-    _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return img
-
-def modify_ratio(image: Image.Image) -> tuple[Image.Image, tuple[float, float]]:
-    w, h = image.size
-    new_w, new_h = 381, 34
-
-    w_scale = w / new_w
-    h_scale = h / new_h
-    return image.resize((381, 34)), (w_scale, h_scale)
-
-def text_striping(text: str):
-    text = text.strip("\n ")
-    text = re.sub(r"\n[\s]+", "\n", text)
-    text = re.sub(r"\n?Station|[\s]+$", "", text)
-    return text
-
-async def get_info(img: Image):
-    name = await get_title(process_image(img, CONFIG["name"], amount=False))
-    amount = await get_amount(process_image(img, CONFIG["amount"], amount=True))
-    return (name, amount)
-
-async def get_title(img: np.ndarray):
-    buffer = BytesIO()
-    Image.fromarray(img).save(buffer, format="PNG")
-    output = await aiopytesseract.image_to_string(
-        buffer.getvalue(), 
-        psm=7)
-    text = text_striping(output)
-    return text.strip()
-
-async def get_amount(img: np.ndarray):
-    buffer = BytesIO()
-    Image.fromarray(img).save(buffer, format="PNG")
-    output = await aiopytesseract.image_to_string(
-        buffer.getvalue(), 
-        psm=7,
-        config=[('tessedit_char_whitelist', '0123456789,.')])
-    text = text_striping(output)
-    text = re.sub(r"[, ]", "", text)
-    return text.strip()
-
-def get_item(image: Image) -> list[tuple[int, int, int, int]]:
-    img = np.array(image)
-
-    # Change Background to white
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    to_change = np.array([30, 30, 30])
-    to_color = np.array([255, 255, 255])
-    img[np.where((img == to_change).all(axis=2))] = to_color
-
-    # Get boxes
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Get mode of boxes width and height
-    widths = []
-    heights = []
-    for contour in contours:
-        x, y, w, h = cv2.boundingRect(contour)
-        # Only if the width is bigger than the height
-        if w > h and w > 10 and h > 10:
-            widths.append(w)
-            heights.append(h)
-    mode_width = stats.mode(widths)[0]
-    mode_height = stats.mode(heights)[0]
-
-    boxes: list[tuple[int, int, int, int]] = []
-    # return boxes coords with the mode width and height
-    for contour in contours:
-        x, y, w, h = cv2.boundingRect(contour)
-        if w == mode_width and h == mode_height:
-            boxes.append((x, y, x+w, y+h))
-    
-    return boxes
-
-
 
 class Valuation(commands.Cog):
 
@@ -149,7 +49,9 @@ class Valuation(commands.Cog):
             return
 
         await interaction.response.defer(thinking=True, ephemeral=(not flex))
-        logger.info(f"Getting valuation of items. By: {interaction.user} | In: {interaction.guild.name} (ID: {interaction.guild.id})" +
+        logger.info(f"Getting valuation of items. By: {interaction.user} | "
+                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name} "
+                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})" +
                     "".join([f"\n\tAttachment: {inventory.filename}, {inventory.content_type}, {inventory.size}"
                              for inventory in images])
                     )
@@ -186,7 +88,7 @@ class Valuation(commands.Cog):
                 "prices": []
             }
 
-            items_cache = {}
+            items_cache = []
 
             pre_processed_names = []
 
@@ -222,7 +124,7 @@ class Valuation(commands.Cog):
                     pre_processed_names.append(name)
                     name = process.extractOne(name, item_names)[0]
                     response_dict["post"].append((name, int(amount or 0)))
-                    items_cache[name] = int(amount or 0)
+                    items_cache.append([name, int(amount or 0)])
             except Exception as e:
                 logger.error(f"Error processing image: {e}")
                 await interaction.followup.send("I couldn't process that image! ;-;", ephemeral=True)
@@ -230,14 +132,15 @@ class Valuation(commands.Cog):
             if len(items_cache) == 0:
                 await interaction.followup.send("I couldn't find any items in that image! ;-;", ephemeral=True)
                 return
-            item_look = await self.bot.db.get_filtered_item_list(list(items_cache.keys()))
+            item_look = await self.bot.db.get_filtered_item_list([i[0] for i in items_cache])
 
             valuation = discord.Embed(title=f"Image {i} Valuation", color=0x808080)
 
             item_str = ""
 
             total = 0
-            for item, amount in items_cache.items():
+            logger.info(f"Items Cache: {items_cache}")
+            for item, amount in [tuple(i) for i in items_cache]:
                 individual_price = item_look[item]
                 if individual_price is None:
                     response_dict["prices"].append((item, "Not Found", amount, "Not Found")) 

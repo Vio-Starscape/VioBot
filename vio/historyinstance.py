@@ -20,9 +20,6 @@ class MarketHistoryInstance:
     def __getitem__(self, key: int) -> ItemInstance:
         return self.item_instances[key]
     
-    async def process_changes(self, initial_instance: ItemInstance, previous_instance: ItemInstance) -> MarketChangeType:
-        """Process the changes between two instances."""
-    
     async def changes_for(self, page: int) -> discord.Embed:
         """Get the changes for a specific page."""
         if page < (self.min_page+1) or page > self.max_page:
@@ -108,20 +105,15 @@ class MarketHistoryInstance:
             page2 = self.max_page
 
         def interQuartileRange(data: list):
-            Q1, Q3 = np.percentile([d for d in data if d is not None], [10, 90])
+            Q1, Q3 = np.percentile([d for d in data if d is not None], [25, 75])
             IQR = Q3 - Q1
-            
-            info = []
-            for point in data:
-                if point is not None:
-                    if Q1 - 1.5 * IQR <= point <= Q3 + 1.5 * IQR:
-                        info.append(point)
-                    else:
-                        info.append(None)
-                else:
-                    info.append(None)
 
-            return info
+
+            return [
+                None if d is None else 
+                d if Q1 - 1.5 * IQR <= d <= Q3 + 1.5 * IQR else None 
+                for d in data
+            ]
 
         pages = [
             instance for instance in self.item_instances.values() 
