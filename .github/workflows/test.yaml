@@ -11,10 +11,9 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11' 
-      - name: Install dependencies
-        run: |   # Using '|' for multi-line command
-          pip install -r requirements.txt
-          apt-get update 
-          apt-get install -y tesseract-ocr
+      - name: Install pythondependencies
+        run: pip install -r requirements.txt
+      - name: Install tesseract
+        run: sudo apt update && sudo apt install -y tesseract-ocr
       - name: Run tests
         run: pytest
