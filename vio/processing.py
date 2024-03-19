@@ -1,9 +1,8 @@
 from PIL import Image
 from scipy import stats
 from io import BytesIO
-import pytesseract
+import aiopytesseract
 import re
-import uuid
 import numpy as np
 import cv2
 
@@ -38,9 +37,9 @@ def text_striping(text: str):
     text = re.sub(r"\n?Station|[\s]+$", "", text)
     return text
 
-def get_info(img: Image):
-    name = get_title(process_image(img, CONFIG["name"]))
-    amount = get_amount(process_image(img, CONFIG["amount"]))
+async def get_info(img: Image.Image) -> tuple[str, str]:
+    name = await get_title(process_image(img, CONFIG["name"]))
+    amount = await get_amount(process_image(img, CONFIG["amount"]))
     return name, amount
 
 def fix_title(title: str):
@@ -74,16 +73,32 @@ def preprocess_title(img: np.ndarray) -> np.ndarray:
     # img = cv2.erode(img, np.ones((2, 0), np.uint8), iterations=1)
     return img
 
-def get_title(img: np.ndarray):
+async def get_title(img: np.ndarray):
     img = preprocess_title(img)
-    output = pytesseract.image_to_string(
-        img,
-        lang="model",
-        config="--psm 10"
-        " --oem 1"
-        " --tessdata-dir ./tessdata"
-        " -c tessedit_char_blacklist=$[]"
+
+    buff = BytesIO()
+    Image.fromarray(img).save(buff, format="PNG")
+    buff.seek(0)
+
+    output = await aiopytesseract.image_to_string(
+        buff.getvalue(),
+        # lang="model",
+        psm=10,
+        # oem=1,
+        # tessdata_dir="./tessdata",
+        config=[
+            ("tessedit_char_blacklist", "$[]")
+        ]
     )
+
+    # output = pytesseract.image_to_string(
+    #     img,
+    #     lang="model",
+    #     config="--psm 10"
+    #     " --oem 1"
+    #     " --tessdata-dir ./tessdata"
+    #     " -c tessedit_char_blacklist=$[]"
+    # )
     return fix_title(output)
 
 def preprocess_amount(img: np.ndarray) -> np.ndarray:
@@ -110,34 +125,48 @@ def preprocess_amount(img: np.ndarray) -> np.ndarray:
     img = cv2.erode(img, np.ones((3, 3), np.uint8), iterations=1)
     return img
 
-def get_amount(img: np.ndarray):
+async def get_amount(img: np.ndarray):
     img = preprocess_amount(img)
-    # img = Image.fromarray(img)
 
-    output = pytesseract.image_to_string(img,
-        lang="model",
-        config="--psm 10"
-        " --oem 1"
-        ' -c tessedit_char_blacklist="$[]/"'
-        " --tessdata-dir ./tessdata"
-        )
-    print(output.strip())
-    if output.strip() == "":
-        print("Here")
-        output = pytesseract.image_to_string(img,
-            lang="eng",
-            config="--psm 10"
-            " --oem 1"
-            ' -c tessedit_char_blacklist="$[]/"'
-            " --tessdata-dir ./tessdata"
-            )
-        print(output.strip())
+    buff = BytesIO()
+    Image.fromarray(img).save(buff, format="PNG")
+    buff.seek(0)
+
+    output = await aiopytesseract.image_to_string(
+        buff.getvalue(),
+        # lang="model",
+        psm=10,
+        # oem=1,
+        # tessdata_dir="./tessdata",
+        config=[
+            ("tessedit_char_blacklist", "$[]")
+        ]
+    )
+
+    # output = pytesseract.image_to_string(img,
+    #     lang="model",
+    #     config="--psm 10"
+    #     " --oem 1"
+    #     ' -c tessedit_char_blacklist="$[]/"'
+    #     " --tessdata-dir ./tessdata"
+    #     )
+    # print(output.strip())
+    # if output.strip() == "":
+    #     print("Here")
+    #     output = pytesseract.image_to_string(img,
+    #         lang="eng",
+    #         config="--psm 10"
+    #         " --oem 1"
+    #         ' -c tessedit_char_blacklist="$[]/"'
+    #         " --tessdata-dir ./tessdata"
+    #         )
+    #     print(output.strip())
     if output.strip().endswith("ed"): return 0
     text = text_striping(output)
     # text = text.replace("?", "1").replace("s", "5").replace("S", "5").replace("g", "9").replace("]", "1")
     return text.strip()
 
-def get_item(image: Image) -> list[tuple[int, int, int, int]]:
+def get_item(image: Image.Image) -> list[tuple[int, int, int, int]]:
     img = np.array(image)
 
     # Change Background to white
