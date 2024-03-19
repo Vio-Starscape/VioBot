@@ -13,8 +13,8 @@ jobs:
           python-version: '3.11' 
       - name: Install dependencies
         run: |   # Using '|' for multi-line command
-          pip install pytest discord.py pytesseract  # Install pytesseract
+          pip install -r requirements.txt
           apt-get update 
-          apt-get install -y tesseract-ocr  # Install Tesseract-OCR 
+          apt-get install -y tesseract-ocr
       - name: Run tests
         run: pytest
