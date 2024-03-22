@@ -161,6 +161,7 @@ cython_debug/
 
 .github/
 .vscode/
+.env.example
 
 tests/
 test.py
