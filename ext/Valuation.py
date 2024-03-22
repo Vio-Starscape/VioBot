@@ -39,14 +39,14 @@ class Valuation(commands.Cog):
                   [image1, image2, image3, image4, image5, image6, image7, image8, image9]
                   if i is not None]
 
-        if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
-            logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
-            await interaction.response.send_message(
-                "You are not allowed to use this command!\n\n"
-                "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
-                "Though it is in beta, Price is going to be 100k for lifetime access to the evaluation command.\n"
-                "This will transfer to any future project involving the evaluation of assets.", ephemeral=True)
-            return
+        # if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
+        #     logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
+        #     await interaction.response.send_message(
+        #         "You are not allowed to use this command!\n\n"
+        #         "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
+        #         "Though it is in beta, Price is going to be 100k for lifetime access to the evaluation command.\n"
+        #         "This will transfer to any future project involving the evaluation of assets.", ephemeral=True)
+        #     return
 
         await interaction.response.defer(thinking=True, ephemeral=(not flex))
         logger.info(f"Getting valuation of items. By: {interaction.user} | "
@@ -75,7 +75,7 @@ class Valuation(commands.Cog):
                     description="I can only process images in PNG format!",
                     color=0xFF0000
                 ))
-                return
+                continue
             # Convert to an Image Object
             img_byte = BytesIO(await inventory.read())
             image = Image.open(img_byte)
@@ -132,7 +132,7 @@ class Valuation(commands.Cog):
                     description="I couldn't process that image!\n Make sure the full window is in view, and that you are in **List** view.",
                     color=0xFF0000
                 ))
-                # await interaction.followup.send("I couldn't process that image! ;-;", ephemeral=True)
+                continue
 
             if len(items_cache) == 0:
                 embeds.append(discord.Embed(
