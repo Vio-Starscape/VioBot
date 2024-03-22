@@ -75,7 +75,7 @@ async def stats(interaction: discord.Interaction):
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-
+# Main entry point
 if __name__ == "__main__":
     vio.run(
         os.getenv("BOT_TOKEN"), 
