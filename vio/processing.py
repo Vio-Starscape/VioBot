@@ -68,11 +68,11 @@ def fix_title(title: str):
 def preprocess_title(img: np.ndarray) -> np.ndarray:
     # img = cv2.resize(img, None, fx=1.2, fy=1, interpolation=cv2.INTER_CUBIC)
     # kern = np.ones((5, 5), np.uint8)
-    img = cv2.GaussianBlur(img, (1, 1), 2)
+    # img = cv2.GaussianBlur(img, (1, 1), 2)
 
-    # img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8), iterations=1)
-    # img = cv2.resize(img, None, fx=1.1, fy=1, interpolation=cv2.INTER_CUBIC)
-    # img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8), iterations=1)
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8), iterations=1)
+    img = cv2.resize(img, None, fx=1.1, fy=1, interpolation=cv2.INTER_CUBIC)
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8), iterations=1)
     # img = cv2.dilate(img, np.ones((3, 2), np.uint8), iterations=1)
     # img = cv2.detailEnhance(img, sigma_s=10, sigma_r=0.15)
     # img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
@@ -108,7 +108,7 @@ async def get_title(img: np.ndarray):
     return fix_title(output)
 
 def preprocess_amount(img: np.ndarray) -> np.ndarray:
-    # img = cv2.resize(img, None, fx=2.1, fy=2, interpolation=cv2.INTER_CUBIC)
+    img = cv2.resize(img, None, fx=2.1, fy=2, interpolation=cv2.INTER_CUBIC)
     # img = cv2.threshold(cv2.medianBlur(img, 1), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     # _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     # img = cv2.GaussianBlur(img, (3, 3), 2)
@@ -121,14 +121,14 @@ def preprocess_amount(img: np.ndarray) -> np.ndarray:
     # img = cv2.dilate(img, np.ones((2, 2), np.uint8), iterations=1)
     # _, img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
     # img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=1)
-    # img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((3, 1), np.uint8), iterations=1)
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((3, 1), np.uint8), iterations=1)
 
-    # img = cv2.dilate(img, np.ones((0, 1), np.uint8), iterations=1)
+    img = cv2.dilate(img, np.ones((0, 1), np.uint8), iterations=1)
     # img = cv2.filter2D(img, -1, kernel)
-    # img = cv2.GaussianBlur(img, (5, 3), 0)
-    # _, img = cv2.threshold(img, 40, 255, cv2.THRESH_BINARY)
-    # img = cv2.dilate(img, np.ones((1, 2), np.uint8), iterations=1)
-    # img = cv2.erode(img, np.ones((3, 3), np.uint8), iterations=1)
+    img = cv2.GaussianBlur(img, (5, 3), 0)
+    _, img = cv2.threshold(img, 40, 255, cv2.THRESH_BINARY)
+    img = cv2.dilate(img, np.ones((1, 2), np.uint8), iterations=1)
+    img = cv2.erode(img, np.ones((3, 3), np.uint8), iterations=1)
     return img
 
 async def get_amount(img: np.ndarray):

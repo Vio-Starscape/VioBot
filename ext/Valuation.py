@@ -39,14 +39,14 @@ class Valuation(commands.Cog):
                   [image1, image2, image3, image4, image5, image6, image7, image8, image9]
                   if i is not None]
 
-        if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
-            logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
-            await interaction.response.send_message(
-                "You are not allowed to use this command!\n\n"
-                "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
-                "Though it is in beta, Price is going to be 100k for lifetime access to the evaluation command.\n"
-                "This will transfer to any future project involving the evaluation of assets.", ephemeral=True)
-            return
+        # if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
+        #     logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
+        #     await interaction.response.send_message(
+        #         "You are not allowed to use this command!\n\n"
+        #         "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
+        #         "Though it is in beta, Price is going to be 100k for lifetime access to the evaluation command.\n"
+        #         "This will transfer to any future project involving the evaluation of assets.", ephemeral=True)
+        #     return
 
         await interaction.response.defer(thinking=True, ephemeral=(not flex))
         logger.info(f"Getting valuation of items. By: {interaction.user} | "
@@ -69,10 +69,10 @@ class Valuation(commands.Cog):
         ]
         image_files = []
         for i, inventory in enumerate(images, start=1):
-            if inventory.content_type not in ["image/png", "image/jpeg"]:
+            if inventory.content_type not in ["image/png"]:
                 embeds.append(discord.Embed(
                     title=f"Invalid Attachment for image{i}",
-                    description="I can only process images in PNG or JPEG format!",
+                    description="I can only process images in PNG format!",
                     color=0xFF0000
                 ))
                 return
@@ -127,11 +127,20 @@ class Valuation(commands.Cog):
                     items_cache.append([name, int(amount or 0)])
             except Exception as e:
                 logger.error(f"Error processing image: {e}")
-                await interaction.followup.send("I couldn't process that image! ;-;", ephemeral=True)
+                embeds.append(discord.Embed(
+                    title=f"Error Processing Image {i}",
+                    description="I couldn't process that image!\n Make sure the full window is in view, and that you are in **List** view.",
+                    color=0xFF0000
+                ))
+                # await interaction.followup.send("I couldn't process that image! ;-;", ephemeral=True)
 
             if len(items_cache) == 0:
-                await interaction.followup.send("I couldn't find any items in that image! ;-;", ephemeral=True)
-                return
+                embeds.append(discord.Embed(
+                    title=f"Error Processing Image {i}",
+                    description="I couldn't process that image!\n Make sure the full window is in view, and that you are in **List** view.",
+                    color=0xFF0000
+                ))
+                continue
             item_look = await self.bot.db.get_filtered_item_list([i[0] for i in items_cache])
 
             valuation = discord.Embed(title=f"Image {i} Valuation", color=0x808080)

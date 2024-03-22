@@ -1,7 +1,6 @@
 import discord
 import logging
 import os
-from datetime import datetime
 from discord.ext import commands
 from discord.ext import tasks
 from vio import VioDB
@@ -18,7 +17,7 @@ class Vio(commands.Bot):
             intents=discord.Intents.default()
         )
         self.db = VioDB(db_uri, database)
-        self.up_time = datetime.now()
+        self.up_time = discord.utils.utcnow()
 
     async def on_ready(self):
         logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
@@ -42,6 +41,8 @@ class Vio(commands.Bot):
         # await self.tree.sync(guild=guild)
         await self.tree.sync()
 
+        self.update.start()
+
     @tasks.loop(minutes=10)
     async def update(self):
         """Update task
@@ -54,26 +55,28 @@ class Vio(commands.Bot):
 
 vio = Vio(os.getenv("MOTOR_URI"), os.getenv("DATABASE"))
 
-@vio.tree.command()
+@vio.tree.command(
+    description="Get general information about the bot."
+)
 async def stats(interaction: discord.Interaction):
 
     embed = discord.Embed(
         title="General Information",
-        description="Here is some general information regarding Vio. Created by `Meaning`",
+        description="Here is some general information regarding Vio.\nCreated by `Meaning`",
         color=discord.Color.blurple()
     )
     embed.add_field(
         name="Uptime",
-        value="Given an image of your inventory, I will evaluate the value of your items."
+        value=f"{discord.utils.format_dt(vio.up_time, 'R')}"
     )
     embed.add_field(
         name="Guilds",
-        value=len(vio.guilds)
+        value=f"Count: {len(vio.guilds)}"
     )
     embed.set_footer(
-        text="Version: 1.18b"
+        text=f"Version: {os.getenv('VERSION')}"
     )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.response.send_message(embed=embed)
 
 # Main entry point
 if __name__ == "__main__":
