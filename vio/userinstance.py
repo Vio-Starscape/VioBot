@@ -51,12 +51,12 @@ class UserInstance(BaseModel):
 
         return user_embed
 
-    def view(self, bot: "Vio") -> "UserInstanceView":
+    def view(self, bot: Vio) -> "UserInstanceView":
         return UserInstanceView(self, bot=bot)
     
 class UserInstanceView(discord.ui.View):
 
-    def __init__(self, user_instance: UserInstance, bot: "Vio"):
+    def __init__(self, user_instance: UserInstance, bot: Vio):
         super().__init__()
         self.bot = bot
         self.user_instance = user_instance
