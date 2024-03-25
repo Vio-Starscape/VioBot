@@ -116,34 +116,36 @@ class ItemInstance(BaseModel):
         return min([listing.price for listing in self.sell]) if len(self.sell) > 0 else 0
     
     @property
-    def average_sell(self):
+    def average_sell(self) -> float:
         if len(self.sell) == 0: return 0
-        
-        q1, q3 = np.percentile([listing.price for listing in self.sell], [25, 75])
-        iqr = q3 - q1
-        lower_bound = q1 - (1.5 * iqr)
-        upper_bound = q3 + (1.5 * iqr)
 
-        new_listings = [listing.price for listing in self.sell if lower_bound <= listing.price <= upper_bound]
+        # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
+        i = 0
+        for listing in self.sell:
+            i += listing.price * listing.amount
+        average = i / self.sell_volume
 
-        return np.average(new_listings) if len(new_listings) > 0 else 0
+        unoutlierd = [i for i in [listing.price for listing in self.sell] if i < average * 2]
+
+        return round(float(np.average(unoutlierd)), 2)
     
     @property
     def highest_buy(self):
         return max([listing.price for listing in self.buy]) if len(self.buy) > 0 else 0
     
     @property
-    def average_buy(self):
+    def average_buy(self) -> float:
         if len(self.buy) == 0: return 0
 
-        q1, q3 = np.percentile([listing.price for listing in self.buy], [25, 75])
-        iqr = q3 - q1
-        lower_bound = q1 - (1.5 * iqr)
-        upper_bound = q3 + (1.5 * iqr)
+        # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
+        i = 0
+        for listing in self.buy:
+            i += listing.price * listing.amount
+        average = i / self.buy_volume
 
-        new_listings = [listing.price for listing in self.buy if lower_bound <= listing.price <= upper_bound]
+        unoutlierd = [i for i in [listing.price for listing in self.sell] if i < average * 2]
 
-        return np.average(new_listings) if len(new_listings) > 0 else 0
+        return round(float(np.average(unoutlierd)), 2)
     
     @property
     def embed(self):

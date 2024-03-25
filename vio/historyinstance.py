@@ -4,7 +4,7 @@ import plotly.io as pio
 import numpy as np
 from io import BytesIO
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
 
 from .marketchanges import MarketChangeType
 from .iteminstance import ItemInstance
@@ -19,6 +19,12 @@ class MarketHistoryInstance:
 
     def __getitem__(self, key: int) -> ItemInstance:
         return self.item_instances[key]
+    
+    def __iter__(self):
+        return iter(sorted(self.item_instances.values(), key=lambda x: x.time_scanned))
+    
+    def __len__(self):
+        return len(self.item_instances)
     
     async def changes_for(self, page: int) -> discord.Embed:
         """Get the changes for a specific page."""
@@ -95,8 +101,13 @@ class MarketHistoryInstance:
         )
     
 
-    async def graph_between_pages(self, page1: int, page2: int, iqr: bool = True) -> discord.File:
+    async def graph_between_pages(self, *, page1: Optional[int], page2: Optional[int], iqr: Optional[bool] = True) -> discord.File:
         """Graph the difference between two pages."""
+        if page1 is None:
+            page1 = self.min_page
+        if page2 is None:
+            page2 = self.max_page
+
         if page1 > page2:
             page1, page2 = page2, page1
         if page1 < self.min_page:
