@@ -61,15 +61,6 @@ class UserInstanceView(discord.ui.View):
         self.bot = bot
         self.user_instance = user_instance
 
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        self.stop()
-
-    @discord.ui.button(label="This is me!", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Link", style=discord.ButtonStyle.primary)
     async def is_me(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Yes, it's you!", ephemeral=True)
-
-    @discord.ui.button(label="Track Changes", style=discord.ButtonStyle.secondary)
-    async def track(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Tracking this user...", ephemeral=True)
+        pass

@@ -125,6 +125,26 @@ class VioDB:
             sell=sell_listings
         )
     
+    async def get_users_tracked_accounts(self) -> list[dict[int, list[int]]]:
+        """Get all users and their tracked accounts."""
+        logger.debug("Getting all users and their tracked accounts!")
+        return [doc async for doc in self.db["Tracking"].find()]
+    
+    async def add_tracked_account(self, user_id: int, account_id: int) -> None:
+        """Add a tracked account to a user."""
+        logger.debug(f"Adding tracked account: {account_id} to user: {user_id}!")
+        await self.db["Tracking"].update_one({"_id": user_id}, {"$push": {"accounts": account_id}}, upsert=True)
+
+    async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> MarketInstance:
+        """Get the latest valid market for an item before a certain count."""
+        logger.debug(f"Getting latest valid market for item: {item} before count: {count}!")
+
+        market = await self.db["Market"].find_one({"_id": {"$lt": count}, f"items.{item}": {"$exists": True}}, sort=[("_id", -1)])
+        market = await self.insert_roblox_users_to_market(market)
+        market = await self.validate_timestamp(market)
+
+        return MarketInstance(**market)
+    
     async def get_item_history(self, item: str) -> MarketHistoryInstance:
 
         """Get the history of an item."""

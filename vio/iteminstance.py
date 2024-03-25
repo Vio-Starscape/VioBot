@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 from .listing import Listing, ListingType
-from .marketchanges import MarketChangeType
+from .marketchanges import MarketChangeType, ListingChange
 from .robloxuser import RobloxUser
 
 class ItemInstance(BaseModel):
@@ -31,59 +31,109 @@ class ItemInstance(BaseModel):
             listing.append(name)
         return v
     
-    def process_changes(self, initial_instance: "ItemInstance", previous_instance: "ItemInstance") -> Tuple[
-            List[Tuple[MarketChangeType, Optional[float], Optional[int], Optional[RobloxUser]]],
-            List[Tuple[MarketChangeType, Optional[float], Optional[int], Optional[RobloxUser]]]
-                ]:
+    def process_changes(self, previous_instance: "ItemInstance") -> Tuple[List[ListingChange], List[ListingChange]]:
         """Process the changes between two instances."""
         buy_changes = []
         sell_changes = []
 
-        initial_buy = {listing.user.id: listing for listing in initial_instance.buy}
+        initial_buy = {listing.user.id: listing for listing in self.buy}
         previous_buy = {listing.user.id: listing for listing in previous_instance.buy}
 
-        initial_sell = {listing.user.id: listing for listing in initial_instance.sell}
+        initial_sell = {listing.user.id: listing for listing in self.sell}
         previous_sell = {listing.user.id: listing for listing in previous_instance.sell}
 
         # Process the Buy changes
-        for listing in initial_instance.buy:
+        for listing in self.buy:
             matching_listing = previous_buy.get(listing.user.id)
             if matching_listing:
                 if matching_listing.price == listing.price and matching_listing.amount == listing.amount:
                     pass
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
-                    buy_changes.append([MarketChangeType.SOLD, listing.price, matching_listing.amount - listing.amount, listing.user])
+                    buy_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.SOLD,
+                            price=listing.price,
+                            amount=matching_listing.amount - listing.amount,
+                            user=listing.user
+                        )
+                    )
                 else:
-                    buy_changes.append([MarketChangeType.NEW, listing.price, listing.amount, listing.user])
+                    buy_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.NEW,
+                            price=listing.price,
+                            amount=listing.amount,
+                            user=listing.user
+                        )
+                    )
             else:
-                buy_changes.append([MarketChangeType.NEW, listing.price, listing.amount, listing.user])
+                buy_changes.append(
+                    ListingChange(
+                        type=MarketChangeType.NEW,
+                        price=listing.price,
+                        amount=listing.amount,
+                        user=listing.user
+                    )
+                )
         for listing in previous_instance.buy:
             if initial_buy.get(listing.user.id) is None:
-                buy_changes.append([MarketChangeType.COMPLETED, listing.price, listing.amount, listing.user])
+                buy_changes.append(
+                    ListingChange(
+                        type=MarketChangeType.COMPLETED,
+                        price=listing.price,
+                        amount=listing.amount,
+                        user=listing.user
+                    )
+                )
 
         # Process the Sell changes
-        for listing in initial_instance.sell:
+        for listing in self.sell:
             matching_listing = previous_sell.get(listing.user.id)
             if matching_listing:
                 if matching_listing.price == listing.price and matching_listing.amount == listing.amount:
                     pass
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
-                    sell_changes.append([MarketChangeType.SOLD, listing.price, matching_listing.amount - listing.amount, listing.user])
+                    sell_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.SOLD,
+                            price=listing.price,
+                            amount=matching_listing.amount - listing.amount,
+                            user=listing.user
+                        )
+                    )
                 else:
-                    sell_changes.append([MarketChangeType.NEW, listing.price, listing.amount, listing.user])
+                    sell_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.NEW,
+                            price=listing.price,
+                            amount=listing.amount,
+                            user=listing.user
+                        )
+                    )
             else:
-                sell_changes.append([MarketChangeType.NEW, listing.price, listing.amount, listing.user])
+                sell_changes.append(
+                    ListingChange(
+                        type=MarketChangeType.NEW,
+                        price=listing.price,
+                        amount=listing.amount,
+                        user=listing.user
+                    )
+                )
         for listing in previous_instance.sell:
             if initial_sell.get(listing.user.id) is None:
-                sell_changes.append([MarketChangeType.COMPLETED, listing.price, listing.amount, listing.user])
+                sell_changes.append(
+                    ListingChange(
+                        type=MarketChangeType.COMPLETED,
+                        price=listing.price,
+                        amount=listing.amount,
+                        user=listing.user
+                    )
+                )
 
         return sell_changes, buy_changes
             
     
-    def __sub__(self, other: "ItemInstance") -> Tuple[
-            List[Tuple[MarketChangeType, Optional[float], Optional[int], Optional[RobloxUser]]],
-            List[Tuple[MarketChangeType, Optional[float], Optional[int], Optional[RobloxUser]]]
-                ]:
+    def __sub__(self, other: "ItemInstance") -> Tuple[List[ListingChange], List[ListingChange]]:
         if not isinstance(other, ItemInstance):
             raise TypeError("Can only subtract ItemInstances from ItemInstances!")
 
@@ -91,9 +141,9 @@ class ItemInstance(BaseModel):
             raise ValueError("Cannot subtract the same instance from itself!")
         
         if other.id > self.id: # If the other instance is newer than this one
-            return self.process_changes(other, self)
+            return self.process_changes(other)
         else:
-            return self.process_changes(self, other)
+            return other.process_changes(self)
         
     @property
     def valid(self):
