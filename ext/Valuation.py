@@ -39,14 +39,14 @@ class Valuation(commands.Cog):
                   [image1, image2, image3, image4, image5, image6, image7, image8, image9]
                   if i is not None]
 
-        # if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
-        #     logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
-        #     await interaction.response.send_message(
-        #         "You are not allowed to use this command!\n\n"
-        #         "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
-        #         "Though it is in beta, Price is going to be 100k for lifetime access to the evaluation command.\n"
-        #         "This will transfer to any future project involving the evaluation of assets.", ephemeral=True)
-        #     return
+        if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
+            logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
+            await interaction.response.send_message(
+                "You are not allowed to use this command!\n\n"
+                "If you would like access to this command DM meaning from [Vio](https://discord.gg/3dUWakkSyj)\n"
+                "Though it is in beta, Price is going to be 100k for lifetime access to the evaluation command.\n"
+                "This will transfer to any future project involving the evaluation of assets.", ephemeral=True)
+            return
 
         await interaction.response.defer(thinking=True, ephemeral=(not flex))
         logger.info(f"Getting valuation of items. By: {interaction.user} | "
@@ -164,7 +164,7 @@ class Valuation(commands.Cog):
             valuation.add_field(name="Valuation", value=f"{total:,.2f}", inline=False)
             valuation.add_field(name="Items", value=item_str, inline=False)
 
-            # valuation.add_field(name="Raw Names (Debugging)", value=f"\n".join(pre_processed_names), inline=True)
+
             if processed_images:
                 valuation.set_image(url=f"attachment://img{i}.png")
 
