@@ -59,6 +59,9 @@ vio = Vio(os.getenv("MOTOR_URI"), os.getenv("DATABASE"))
     description="Get general information about the bot."
 )
 async def stats(interaction: discord.Interaction):
+    logger.info(f"Status Invoked | By: {interaction.user} | "
+            f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
+            f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
 
     embed = discord.Embed(
         title="General Information",
