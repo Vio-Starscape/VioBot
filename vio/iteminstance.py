@@ -115,15 +115,15 @@ class ItemInstance(BaseModel):
     def lowest_sell(self):
         return min([listing.price for listing in self.sell]) if len(self.sell) > 0 else 0
     
-    @property
-    def average_sell(self) -> float:
+    def average_sell(self, *, average: float = None) -> float:
         if len(self.sell) == 0: return 0
 
-        # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
-        i = 0
-        for listing in self.sell:
-            i += listing.price * listing.amount
-        average = i / self.sell_volume
+        if not average:
+            # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
+            i = 0
+            for listing in self.sell:
+                i += listing.price * listing.amount
+            average = i / self.sell_volume
 
         unoutlierd = [i for i in [listing.price for listing in self.sell] if i < average * 2]
 
@@ -133,17 +133,17 @@ class ItemInstance(BaseModel):
     def highest_buy(self):
         return max([listing.price for listing in self.buy]) if len(self.buy) > 0 else 0
     
-    @property
-    def average_buy(self) -> float:
+    def average_buy(self, *, average: Optional[float] = None) -> float:
         if len(self.buy) == 0: return 0
 
-        # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
-        i = 0
-        for listing in self.buy:
-            i += listing.price * listing.amount
-        average = i / self.buy_volume
+        if not average:
+            # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
+            i = 0
+            for listing in self.buy:
+                i += listing.price * listing.amount
+            average = i / self.buy_volume
 
-        unoutlierd = [i for i in [listing.price for listing in self.sell] if i < average * 2]
+        unoutlierd = [i for i in [listing.price for listing in self.buy] if i < average * 2]
 
         return round(float(np.average(unoutlierd)), 2)
     
