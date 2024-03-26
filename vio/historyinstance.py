@@ -164,10 +164,17 @@ class MarketHistoryInstance:
         volume_buy = self.__interpolate_zeros([i.buy_volume for i in self.item_instances.values() if page1 <= i.id <= page2])
         volume_sell = self.__interpolate_zeros([i.sell_volume for i in self.item_instances.values() if page1 <= i.id <= page2])
 
-        average_sell_smooth = savgol_filter(average_sell, 51, 3)  # window size 51, polynomial order 3
+        # Smoothing the Curve
+        average_sell_smooth = savgol_filter(average_sell, 51, 3)
         average_buy_smooth = savgol_filter(average_buy, 51, 3)
         volume_buy_smooth = savgol_filter(volume_buy, 51, 3)
         volume_sell_smooth = savgol_filter(volume_sell, 51, 3)
+
+        # Make sure its no 0
+        average_buy_smooth = [max(0, i) for i in average_buy_smooth]
+        average_sell_smooth = [max(0, i) for i in average_sell_smooth]
+        volume_buy_smooth = [max(0, i) for i in volume_buy_smooth]
+        volume_sell_smooth = [max(0, i) for i in volume_sell_smooth]
 
         fig = splt.make_subplots(
             rows=2, 
@@ -205,9 +212,6 @@ class MarketHistoryInstance:
             col=1,
         )
 
-        # fig.update_traces(mode="lines", selector=dict(type='scatter')) 
-        fig.update_traces(mode="lines")
-
         fig.update_layout(
                 title=f"Market Changes for {self.name}",
                 font=dict(
@@ -220,37 +224,37 @@ class MarketHistoryInstance:
                 yaxis=dict(
                     showgrid=False,
                     title='Volume',
-                    side='left',
-                    # domain=[0.5, 1]
+                    side='right',
+                    domain=[0.55, 1]
                 ),
                 yaxis2=dict(
-                    showgrid=False,
+                    showgrid=True,
                     title='Price',
                     overlaying='y',
-                    side='right',
+                    side='left',
                     tickmode="array",
-                    # domain=[0.5, 1]
+                    domain=[0.55, 1]
                 ),
                 yaxis3=dict(
                     showgrid=False,
                     title='Volume',
-                    side='left',
-                    # domain=[0.5, 1]
+                    side='right',
+                    domain=[0, 0.45]
                 ),
                 yaxis4=dict(
-                    showgrid=False,
+                    showgrid=True,
                     title='Price',
                     overlaying='y3',
-                    side='right',
+                    side='left',
                     tickmode="array",
-                    # domain=[0.5, 1]
+                    domain=[0, 0.45]
                 ),
                 barmode="overlay",
                 legend=dict(
                     yanchor="top",
                     y=1.08,
                     xanchor="left",
-                    x=0.3,
+                    x=0.55,
                     bgcolor="rgba(0,0,0,0)",
                     orientation="h"
                 ),
@@ -284,14 +288,8 @@ class MarketHistoryInstance:
                         ),
                     )
                 ],
-                margin=dict(  # Add this dictionary
-                    l=85,  # left margin
-                    r=0,  # right margin
-                    b=50,  # bottom margin
-                    t=50,  # top margin
-                    pad=10,  # padding,
-                )
-        )
+                margin=dict(l=85, r=0, b=50, t=50, pad=10)
+            )
 
         fig_bytes = pio.to_image(fig, format='png')
         return discord.File(fp=BytesIO(fig_bytes), filename="graph.png")
