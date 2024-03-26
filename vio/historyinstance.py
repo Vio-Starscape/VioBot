@@ -219,13 +219,13 @@ class MarketHistoryInstance:
                 plot_bgcolor='gray',
                 yaxis=dict(
                     showgrid=False,
-                    title='Price',
+                    title='Volume',
                     side='left',
                     # domain=[0.5, 1]
                 ),
                 yaxis2=dict(
                     showgrid=False,
-                    title='Volume',
+                    title='Price',
                     overlaying='y',
                     side='right',
                     tickmode="array",
@@ -233,13 +233,13 @@ class MarketHistoryInstance:
                 ),
                 yaxis3=dict(
                     showgrid=False,
-                    title='Price',
+                    title='Volume',
                     side='left',
                     # domain=[0.5, 1]
                 ),
                 yaxis4=dict(
                     showgrid=False,
-                    title='Volume',
+                    title='Price',
                     overlaying='y3',
                     side='right',
                     tickmode="array",
