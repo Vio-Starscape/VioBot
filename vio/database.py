@@ -133,7 +133,7 @@ class VioDB:
             sell=sell_listings
         )
     
-    async def get_item_history(self, item: str) -> MarketHistoryInstance:
+    async def get_item_history(self, item: str, *, distance: Optional[int] = None) -> MarketHistoryInstance:
 
         """Get the history of an item."""
         logger.debug(f"Getting item history: {item}!")
@@ -160,7 +160,7 @@ class VioDB:
         tasks = []
         current_count = await self.get_current_count()
         async for doc in self.db["Market"].find(
-            {"_id": {"$gt": current_count-2100}},
+            {"_id": {"$gt": current_count - distance if distance is not None else 0}},
             {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
             tasks.append(process_document(doc, item, item_instances, roblox_users))
         await asyncio.gather(*tasks)

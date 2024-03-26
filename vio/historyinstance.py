@@ -1,10 +1,12 @@
 import discord
 import plotly.graph_objects as go
 import plotly.io as pio
+import plotly.subplots as splt
 import numpy as np
 from io import BytesIO
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
+from scipy.signal import savgol_filter
 
 from .marketchanges import MarketChangeType
 from .iteminstance import ItemInstance
@@ -19,6 +21,12 @@ class MarketHistoryInstance:
 
     def __getitem__(self, key: int) -> ItemInstance:
         return self.item_instances[key]
+    
+    def __iter__(self):
+        return iter(sorted(self.item_instances.values(), key=lambda x: x.time_scanned))
+    
+    def __len__(self):
+        return len(self.item_instances)
     
     async def changes_for(self, page: int) -> discord.Embed:
         """Get the changes for a specific page."""
@@ -89,14 +97,60 @@ class MarketHistoryInstance:
     
     async def graph(self) -> discord.File:
         """Graph the entire recorded history of the item."""
-        return await self.graph_between_pages(
-            self.max_page-1000,
-            self.max_page
-        )
+        return await self.graph_between_pages()
+    
+    def __interpolate_zeros(self, lst) -> list:
+        # Kevin Method the Entire Thing
+        average = float(np.average([i for i in lst if i != 0]))
+        lst = [i if i < average * 2 else 0 for i in lst]
+
+        # Find the last non-zero value in the list
+        last_non_zero = next((x for x in reversed(lst) if x != 0), average)
+
+        i = 0
+        while i < len(lst):
+            if lst[i] == 0:
+                # Find the next non-zero number and the number of zeros
+                next_non_zero_index = i + 1
+                while next_non_zero_index < len(lst) and lst[next_non_zero_index] == 0:
+                    next_non_zero_index += 1
+
+                # If there's no non-zero number after the zeros, break the loop
+                if next_non_zero_index == len(lst):
+                    break
+
+                # Calculate the step size
+                prev_non_zero = lst[i - 1] if i > 0 else 0
+                next_non_zero = lst[next_non_zero_index]
+                num_zeros = next_non_zero_index - i
+                step_size = (next_non_zero - prev_non_zero) / (num_zeros + 1)
+
+                # Replace the zeros
+                for j in range(i, next_non_zero_index):
+                    lst[j] = round(prev_non_zero + step_size * (j - i + 1), 2)
+
+                # Move the index
+                i = next_non_zero_index
+            else:
+                i += 1
+
+        # Replace trailing zeros with the last non-zero value
+        for i in reversed(range(len(lst))):
+            if lst[i] == 0:
+                lst[i] = last_non_zero
+            else:
+                break  # Stop as soon as we find a non-zero value
+
+        return lst
     
 
-    async def graph_between_pages(self, page1: int, page2: int, iqr: bool = True) -> discord.File:
+    async def graph_between_pages(self, *, page1: Optional[int] = None, page2: Optional[int] = None) -> discord.File:
         """Graph the difference between two pages."""
+        if page1 is None:
+            page1 = self.min_page
+        if page2 is None:
+            page2 = self.max_page
+
         if page1 > page2:
             page1, page2 = page2, page1
         if page1 < self.min_page:
@@ -104,72 +158,139 @@ class MarketHistoryInstance:
         if page2 > self.max_page:
             page2 = self.max_page
 
-        def interQuartileRange(data: list):
-            Q1, Q3 = np.percentile([d for d in data if d is not None], [25, 75])
-            IQR = Q3 - Q1
+        times = [i.time_scanned for i in self.item_instances.values() if page1 <= i.id <= page2]
+        average_sell = self.__interpolate_zeros([i.average_sell() for i in self.item_instances.values() if page1 <= i.id <= page2])
+        average_buy = self.__interpolate_zeros([i.average_buy() for i in self.item_instances.values() if page1 <= i.id <= page2])
+        volume_buy = self.__interpolate_zeros([i.buy_volume for i in self.item_instances.values() if page1 <= i.id <= page2])
+        volume_sell = self.__interpolate_zeros([i.sell_volume for i in self.item_instances.values() if page1 <= i.id <= page2])
 
+        average_sell_smooth = savgol_filter(average_sell, 51, 3)  # window size 51, polynomial order 3
+        average_buy_smooth = savgol_filter(average_buy, 51, 3)
+        volume_buy_smooth = savgol_filter(volume_buy, 51, 3)
+        volume_sell_smooth = savgol_filter(volume_sell, 51, 3)
 
-            return [
-                None if d is None else 
-                d if Q1 - 1.5 * IQR <= d <= Q3 + 1.5 * IQR else None 
-                for d in data
-            ]
+        fig = splt.make_subplots(
+            rows=2, 
+            cols=1, 
+            shared_xaxes=True, 
+            vertical_spacing=0.1, 
+            subplot_titles=("Sell", "Buy"),
+            specs=[[{"secondary_y": True}], [{"secondary_y": True}]]
+            )
+        
+        # Sell
+        fig.add_trace(
+            go.Scatter(x=times, y=average_sell_smooth, mode="lines", name="Average Sell Price", line=dict(color='#003300')),
+            row=1,
+            col=1,
+            secondary_y=True
+        )
+        fig.add_trace(
+            go.Scatter(x=times, y=volume_sell_smooth, name="Volume", fill='tozeroy', fillcolor='rgba(0, 255, 0, 0.5)', line=dict(color='#00ff00')),
+            row=1,
+            col=1
+        )
 
-        pages = [
-            instance for instance in self.item_instances.values() 
-            if page1 <= instance.id <= page2
-        ]
+        # Buy
+        fig.add_trace(
+            go.Scatter(x=times, y=average_buy_smooth, mode="lines", name="Average Buy Price", line=dict(color='#330000')),
+            row=2,
+            col=1,
+            secondary_y=True
+        )
+        fig.add_trace(
+            go.Scatter(x=times, y=volume_buy_smooth, name="Volume", fill='tozeroy', line=dict(color='#ff0000'), fillcolor='rgba(255, 0, 0, 0.5)'
+                    ),
+            row=2,
+            col=1,
+        )
 
-        timestamps = [
-            instance.time_scanned for instance in pages
-            if page1 <= instance.id <= page2
-        ]
-        volumes = [
-            None if instance.volume == 0 else instance.volume 
-            for instance in pages 
-            if page1 <= instance.id <= page2
-        ]
+        # fig.update_traces(mode="lines", selector=dict(type='scatter')) 
+        fig.update_traces(mode="lines")
 
-        lowest_sells = [
-            None if instance.average_sell == 0 else instance.average_sell
-            for instance in pages 
-            if page1 <= instance.id <= page2
-        ]
-        highest_buys = [
-            None if instance.average_buy == 0 else instance.average_buy
-            for instance in pages
-            if page1 <= instance.id <= page2
-        ]
-
-        if iqr:
-            if any(volumes): volumes = interQuartileRange(volumes)
-            if any(lowest_sells): lowest_sells = interQuartileRange(lowest_sells)
-            if any(highest_buys): highest_buys = interQuartileRange(highest_buys)
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=timestamps, y=volumes, name='Volume', yaxis='y2', mode='lines', fill='tozeroy'))
-        fig.add_trace(go.Scatter(x=timestamps, y=lowest_sells, mode='lines', name='Average Sell'))
-        fig.add_trace(go.Scatter(x=timestamps, y=highest_buys, mode='lines', name='Average Buy'))
         fig.update_layout(
-            title=f"Market Changes for {self.name}",
-            plot_bgcolor='rgba(0,0,0,0)',
-            yaxis=dict(
-                title='Price',
-                side='left'
-            ),
-            yaxis2=dict(
-                title='Volume',
-                overlaying='y',
-                side='right'
-            ),
-            barmode="overlay",
-            legend=dict(
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01
-            ),
-            width=1200,
+                title=f"Market Changes for {self.name}",
+                font=dict(
+                    family="Inconsolata, monospace",
+                    size=15,
+                    color="White"
+                ),
+                paper_bgcolor='gray',
+                plot_bgcolor='gray',
+                yaxis=dict(
+                    showgrid=False,
+                    title='Price',
+                    side='left',
+                    # domain=[0.5, 1]
+                ),
+                yaxis2=dict(
+                    showgrid=False,
+                    title='Volume',
+                    overlaying='y',
+                    side='right',
+                    tickmode="array",
+                    # domain=[0.5, 1]
+                ),
+                yaxis3=dict(
+                    showgrid=False,
+                    title='Price',
+                    side='left',
+                    # domain=[0.5, 1]
+                ),
+                yaxis4=dict(
+                    showgrid=False,
+                    title='Volume',
+                    overlaying='y3',
+                    side='right',
+                    tickmode="array",
+                    # domain=[0.5, 1]
+                ),
+                barmode="overlay",
+                legend=dict(
+                    yanchor="top",
+                    y=1.08,
+                    xanchor="left",
+                    x=0.3,
+                    bgcolor="rgba(0,0,0,0)",
+                    orientation="h"
+                ),
+                width=1500,
+                height=700,
+                shapes=[
+                    dict(
+                        type="rect",
+                        xref="paper",
+                        yref="paper",
+                        x0=0,
+                        y0=0.55,
+                        x1=0.94,
+                        y1=1,
+                        line=dict(
+                            color="Black",
+                            width=2,
+                        ),
+                    ),
+                    dict(
+                        type="rect",
+                        xref="paper",
+                        yref="paper",
+                        x0=0,
+                        y0=0,
+                        x1=0.94,
+                        y1=0.45,
+                        line=dict(
+                            color="Black",
+                            width=2,
+                        ),
+                    )
+                ],
+                margin=dict(  # Add this dictionary
+                    l=85,  # left margin
+                    r=0,  # right margin
+                    b=50,  # bottom margin
+                    t=50,  # top margin
+                    pad=10,  # padding,
+                )
         )
 
         fig_bytes = pio.to_image(fig, format='png')
