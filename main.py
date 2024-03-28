@@ -20,6 +20,13 @@ class Vio(commands.Bot):
         self.up_time = discord.utils.utcnow()
 
     async def on_ready(self):
+        await self.change_presence(
+            activity=discord.Activity(
+                name="the market!",
+                type=discord.ActivityType.watching
+            )
+        )
+
         logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
         logger.info(f"Connected to {len(self.guilds)} guilds!")
         logger.info("-"*20)
@@ -33,6 +40,7 @@ class Vio(commands.Bot):
         self.roblox_users = await self.db.get_roblox_users()
         await self.load_extension("ext.Market")
         await self.load_extension("ext.Valuation")
+        await self.load_extension("ext.Undercut")
 
         # Testing
         # guild = discord.Object(id=os.getenv("MAIN_GUILD_ID"))
@@ -78,7 +86,6 @@ async def stats(interaction: discord.Interaction):
     )
     await interaction.response.send_message(embed=embed)
 
-# Main entry point
 if __name__ == "__main__":
     vio.run(
         os.getenv("BOT_TOKEN"), 
