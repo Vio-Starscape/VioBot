@@ -50,7 +50,7 @@ class Market(commands.GroupCog, name="market"):
         """Get information about a user."""
         try:
             vendor = int(vendor)
-            if vendor not in [roblox_user.id for roblox_user in self.bot.roblox_users]:
+            if vendor not in (roblox_user.id for roblox_user in self.bot.roblox_users):
                 await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
                 return
         except ValueError:
@@ -60,11 +60,24 @@ class Market(commands.GroupCog, name="market"):
         await interaction.response.defer(thinking=True)
 
         selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
-        logger.info(f"Getting information about user: {selected_user} | By: {interaction.user} | "
+        logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user} | "
                     f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
                     f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
-        await interaction.followup.send(embed=user_instance.embed, ephemeral=True)
+
+        if await self.bot.db.does_user_have_undercut_permission(interaction.user.id):
+            tracking = await self.bot.db.is_user_tracking_account(interaction.user.id, selected_user.id)
+
+            await interaction.followup.send(
+                embed=user_instance.embed,
+                view=user_instance.view(self.bot, is_tracking=tracking),
+                ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
+                embed=user_instance.embed,
+                ephemeral=True
+            )
 
     @user.autocomplete("vendor")
     async def user_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
