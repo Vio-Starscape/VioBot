@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from enum import Enum
+from typing import Optional
 
+from .listing import Listing
 from .robloxuser import RobloxUser
 
 class MarketChangeType(Enum):
@@ -15,3 +17,6 @@ class ListingChange(BaseModel):
     price: float
     amount: int
     user: RobloxUser
+
+    original: Optional[Listing] = None
+    previous: Optional[Listing] = None

@@ -54,7 +54,9 @@ class ItemInstance(BaseModel):
                             type=MarketChangeType.SOLD,
                             price=listing.price,
                             amount=matching_listing.amount - listing.amount,
-                            user=listing.user
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
                         )
                     )
                 else:
@@ -63,7 +65,9 @@ class ItemInstance(BaseModel):
                             type=MarketChangeType.NEW,
                             price=listing.price,
                             amount=listing.amount,
-                            user=listing.user
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
                         )
                     )
             else:
@@ -72,7 +76,8 @@ class ItemInstance(BaseModel):
                         type=MarketChangeType.NEW,
                         price=listing.price,
                         amount=listing.amount,
-                        user=listing.user
+                        user=listing.user,
+                        original=listing
                     )
                 )
         for listing in previous_instance.buy:
@@ -82,7 +87,8 @@ class ItemInstance(BaseModel):
                         type=MarketChangeType.COMPLETED,
                         price=listing.price,
                         amount=listing.amount,
-                        user=listing.user
+                        user=listing.user,
+                        original=listing
                     )
                 )
 
@@ -95,10 +101,12 @@ class ItemInstance(BaseModel):
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
                     sell_changes.append(
                         ListingChange(
-                            type=MarketChangeType.SOLD,
+                            type=MarketChangeType.NEW,
                             price=listing.price,
-                            amount=matching_listing.amount - listing.amount,
-                            user=listing.user
+                            amount=listing.amount,
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
                         )
                     )
                 else:
@@ -107,7 +115,9 @@ class ItemInstance(BaseModel):
                             type=MarketChangeType.NEW,
                             price=listing.price,
                             amount=listing.amount,
-                            user=listing.user
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
                         )
                     )
             else:
@@ -116,7 +126,8 @@ class ItemInstance(BaseModel):
                         type=MarketChangeType.NEW,
                         price=listing.price,
                         amount=listing.amount,
-                        user=listing.user
+                        user=listing.user,
+                        original=listing
                     )
                 )
         for listing in previous_instance.sell:

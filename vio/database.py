@@ -45,7 +45,8 @@ class VioDB:
             await self.db.create_collection("Permissions")
         if "Tracking" not in collection_names:
             logger.info("Creating Tracking collection!")
-            await self.db.create_collection("Tracking")
+            tracking_collection = await self.db.create_collection("Tracking")
+            await tracking_collection.insert_one({"_id": 0, "count": 0})
 
     async def validate_timestamp(self, market_data: dict) -> dict:
         logger.debug("Validating timestamp!")
@@ -60,14 +61,12 @@ class VioDB:
         if roblox_users is None:
             roblox_users = {doc["_id"]: doc async for doc in self.db["Roblox"].find()}
 
-        logger.debug(f"Inserting Roblox users to market!: {market_data['items']}")
+        logger.debug(f"Inserting Roblox users to market!")
         for value in market_data["items"].values():
             for listing in value["buy"]:
                 listing[2] = roblox_users[listing[2]]
             for listing in value["sell"]:
                 listing[2] = roblox_users[listing[2]]
-        logger.debug(f"Completed: {market_data}")
-
         return market_data
     
     async def get_current_count(self) -> int:
@@ -125,15 +124,43 @@ class VioDB:
             sell=sell_listings
         )
     
+    async def get_last_undercut_check(self) -> int:
+        """Get the last undercut check."""
+        logger.debug("Getting last undercut check!")
+        return (await self.db["Tracking"].find_one({"_id": 0}))["count"]
+        
+    async def set_last_undercut_check(self, count: int) -> None:
+        """Set the last undercut check."""
+        logger.debug(f"Setting last undercut check to: {count}!")
+        await self.db["Tracking"].update_one({"_id": 0}, {"$set": {"count": count}}, upsert=True)
+    
     async def get_users_tracked_accounts(self) -> list[dict[int, list[int]]]:
         """Get all users and their tracked accounts."""
         logger.debug("Getting all users and their tracked accounts!")
-        return [doc async for doc in self.db["Tracking"].find()]
+        users_with_permissions = [i["_id"] async for i in self.db["Permissions"].find() if i.get("undercut", False)]
+        return [doc async for doc in self.db["Tracking"].find({"_id": {"$ne": 0}}) if doc["_id"] in users_with_permissions]
+    
+    async def does_user_have_undercut_permission(self, user_id: int) -> bool:
+        """Check if a user has undercut permission."""
+        logger.debug(f"Checking if user: {user_id} has undercut permission!")
+        value = await self.db["Permissions"].find_one({"_id": user_id})
+        return value is not None and value.get("undercut", False)
+    
+    async def is_user_tracking_account(self, user_id: int, account_id: int) -> bool:
+        """Check if a user is tracking an account."""
+        logger.debug(f"Checking if user: {user_id} is tracking account: {account_id}!")
+        value = await self.db["Tracking"].find_one({"_id": user_id, "accounts": {"$in": [account_id]}})
+        return value is not None
     
     async def add_tracked_account(self, user_id: int, account_id: int) -> None:
         """Add a tracked account to a user."""
         logger.debug(f"Adding tracked account: {account_id} to user: {user_id}!")
         await self.db["Tracking"].update_one({"_id": user_id}, {"$push": {"accounts": account_id}}, upsert=True)
+
+    async def remove_tracked_account(self, user_id: int, account_id: int) -> None:
+        """Remove a tracked account from a user."""
+        logger.debug(f"Removing tracked account: {account_id} from user: {user_id}!")
+        await self.db["Tracking"].update_one({"_id": user_id}, {"$pull": {"accounts": account_id}})
 
     async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> MarketInstance:
         """Get the latest valid market for an item before a certain count."""
@@ -143,7 +170,7 @@ class VioDB:
         market = await self.insert_roblox_users_to_market(market)
         market = await self.validate_timestamp(market)
 
-        return MarketInstance(**market)
+        return MarketInstance(**market)[item]
     
     async def get_item_history(self, item: str) -> MarketHistoryInstance:
 
