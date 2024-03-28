@@ -177,7 +177,7 @@ class ItemInstance(BaseModel):
         return min([listing.price for listing in self.sell]) if len(self.sell) > 0 else 0
     
     def average_sell(self, *, average: float = None) -> float:
-        if len(self.sell) == 0: return 0
+        if len(self.sell) == 0 or self.sell_volume == 0: return 0
 
         if not average:
             # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
@@ -187,15 +187,17 @@ class ItemInstance(BaseModel):
             average = i / self.sell_volume
 
         unoutlierd = [i for i in [listing.price for listing in self.sell] if i < average * 2]
-
-        return round(float(np.average(unoutlierd)), 2)
+        if unoutlierd:
+            return round(float(np.average(unoutlierd)), 2)
+        else:
+            return 0
     
     @property
     def highest_buy(self):
         return max([listing.price for listing in self.buy]) if len(self.buy) > 0 else 0
     
     def average_buy(self, *, average: Optional[float] = None) -> float:
-        if len(self.buy) == 0: return 0
+        if len(self.buy) == 0 or self.buy_volume == 0: return 0
 
         if not average:
             # THIS IS THE KEVIN METHOD TO GET RID OF STARSCAPE OUTLIERS
@@ -206,7 +208,10 @@ class ItemInstance(BaseModel):
 
         unoutlierd = [i for i in [listing.price for listing in self.buy] if i < average * 2]
 
-        return round(float(np.average(unoutlierd)), 2)
+        if unoutlierd:
+            return round(float(np.average(unoutlierd)), 2)
+        else:
+            return 0
     
     @property
     def embed(self):

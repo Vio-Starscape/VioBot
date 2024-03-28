@@ -22,7 +22,7 @@ class Market(commands.GroupCog, name="market"):
         logger.info(f"Getting information about item: {item} | By: {interaction.user} | "
                     f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
                     f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
-        items = await self.bot.db.get_item_history(item, distance=2010)
+        items = await self.bot.db.get_item_history(item, depth=2010)
         selected = items.latest_usable()
         await interaction.followup.send(
             # view=items.view,
