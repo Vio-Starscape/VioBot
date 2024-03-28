@@ -50,7 +50,7 @@ class Vio(commands.Bot):
         await self.load_extension("ext.Market")
         await self.load_extension("ext.Valuation")
         await self.load_extension("ext.VioExclusive")
-        # await self.load_extension("ext.Undercut")
+        await self.load_extension("ext.Undercut")
         await self.tree.sync()
         await self.tree.sync(guild=self.main_guild)
 
