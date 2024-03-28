@@ -64,9 +64,18 @@ class VioDB:
         logger.debug(f"Inserting Roblox users to market!")
         for value in market_data["items"].values():
             for listing in value["buy"]:
-                listing[2] = roblox_users[listing[2]]
+                try:
+                    listing[2] = roblox_users[listing[2]]
+                except KeyError:
+                    logger.warning(f"User not found in database: {listing[2]}. Removing from output!")
+                    value["buy"].remove(listing)
             for listing in value["sell"]:
-                listing[2] = roblox_users[listing[2]]
+                try:
+                    listing[2] = roblox_users[listing[2]]
+                except KeyError:
+                    logger.warning(f"User not found in database: {listing[2]}. Removing from output!")
+                    value["sell"].remove(listing)
+        logger.debug(f"Completed: {market_data}")
         return market_data
     
     async def get_current_count(self) -> int:
@@ -171,10 +180,15 @@ class VioDB:
         market = await self.validate_timestamp(market)
 
         return MarketInstance(**market)[item]
-    
-    async def get_item_history(self, item: str) -> MarketHistoryInstance:
 
-        """Get the history of an item."""
+    async def get_item_history(self, item: str, *, depth: Optional[int] = None) -> MarketHistoryInstance:
+        """Get the history of an item.
+        
+        Args:
+            item (str): The item to get the history for.
+            depth (Optional[int]): The depth to get the history for. Defaults to Complete History.
+        """
+
         logger.debug(f"Getting item history: {item}!")
 
         async def process_document(document: dict, item_name: str, final_dict: dict, roblox: dict):
@@ -199,7 +213,7 @@ class VioDB:
         tasks = []
         current_count = await self.get_current_count()
         async for doc in self.db["Market"].find(
-            {"_id": {"$gt": current_count-2100}},
+            {"_id": {"$gt": current_count - depth if depth is not None else 0}},
             {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
             tasks.append(process_document(doc, item, item_instances, roblox_users))
         await asyncio.gather(*tasks)

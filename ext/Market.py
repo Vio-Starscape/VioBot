@@ -22,13 +22,13 @@ class Market(commands.GroupCog, name="market"):
         logger.info(f"Getting information about item: {item} | By: {interaction.user} | "
                     f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
                     f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
-        items = await self.bot.db.get_item_history(item)
+        items = await self.bot.db.get_item_history(item, distance=2010)
         selected = items.latest_usable()
         await interaction.followup.send(
             # view=items.view,
             embed=selected.embed.set_image(url="attachment://graph.png"), 
             ephemeral=True,
-            file=await items.graph_between_pages(items.max_page-2000, items.max_page)
+            file=await items.graph()
         )
 
     @item.autocomplete("item")

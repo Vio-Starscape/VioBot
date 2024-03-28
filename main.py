@@ -34,6 +34,13 @@ class Vio(commands.Bot):
             logger.info(f"\t{guild.name} (ID: {guild.id})")
         logger.info("-"*20)
 
+        await self.change_presence(
+            activity=discord.Activity(
+                type=discord.ActivityType.watching,
+                name="market changes!"
+            )
+        )
+
     async def setup_hook(self) -> None:
         await self.db.setup()
         self.items = await self.db.get_item_list()
@@ -67,6 +74,9 @@ vio = Vio(os.getenv("MOTOR_URI"), os.getenv("DATABASE"))
     description="Get general information about the bot."
 )
 async def stats(interaction: discord.Interaction):
+    logger.info(f"Status Invoked | By: {interaction.user} | "
+            f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
+            f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
 
     embed = discord.Embed(
         title="General Information",

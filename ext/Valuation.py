@@ -39,6 +39,7 @@ class Valuation(commands.Cog):
                   [image1, image2, image3, image4, image5, image6, image7, image8, image9]
                   if i is not None]
 
+        ## COMMAND IS NOW PUBLIC - 25/03/2024 @ 11:09 PM EST
         # if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
         #     logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
         #     await interaction.response.send_message(
@@ -164,7 +165,7 @@ class Valuation(commands.Cog):
             valuation.add_field(name="Valuation", value=f"{total:,.2f}", inline=False)
             valuation.add_field(name="Items", value=item_str, inline=False)
 
-            # valuation.add_field(name="Raw Names (Debugging)", value=f"\n".join(pre_processed_names), inline=True)
+
             if processed_images:
                 valuation.set_image(url=f"attachment://img{i}.png")
 
