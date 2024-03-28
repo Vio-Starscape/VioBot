@@ -16,6 +16,8 @@ class Vio(commands.Bot):
             command_prefix=commands.when_mentioned,
             intents=discord.Intents.default()
         )
+        self.main_guild = discord.Object(id=int(os.getenv("MAIN_GUILD_ID")))
+        self.affiliation_channel = int(os.getenv("AFFILIATION_CHANNEL"))
         self.db = VioDB(db_uri, database)
         self.up_time = discord.utils.utcnow()
 
@@ -47,14 +49,10 @@ class Vio(commands.Bot):
         self.roblox_users = await self.db.get_roblox_users()
         await self.load_extension("ext.Market")
         await self.load_extension("ext.Valuation")
-        await self.load_extension("ext.Undercut")
-
-        # Testing
-        # guild = discord.Object(id=os.getenv("MAIN_GUILD_ID"))
-        # self.tree.copy_global_to(guild=guild)
-        # self.tree.clear_commands(guild=guild)
-        # await self.tree.sync(guild=guild)
+        await self.load_extension("ext.VioExclusive")
+        # await self.load_extension("ext.Undercut")
         await self.tree.sync()
+        await self.tree.sync(guild=self.main_guild)
 
         self.update.start()
 
