@@ -1,7 +1,7 @@
 import discord
 import numpy as np
 from pydantic import BaseModel, Field, validator
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
 from .listing import Listing, ListingType
@@ -216,6 +216,8 @@ class ItemInstance(BaseModel):
     @property
     def embed(self):
         item_embed = discord.Embed(title=self.name, color=0x808080)
+        if (discord.utils.utcnow() - self.time_scanned) > timedelta(hours=1):
+            item_embed.description = "This scan is outdated! It might not be accurate!"
 
         item_embed.add_field(name="Best Sell Price", value=f"{self.lowest_sell:,.2f}", inline=True)
         item_embed.add_field(name="Volume", value=f"{self.sell_volume:,}/{self.buy_volume:,}", inline=True)

@@ -14,6 +14,7 @@ class Undercutter(commands.Cog):
     def __init__(self, bot: Vio):
         self.bot = bot
         self.__last_count_scanned: int = 0
+        self.__false_counter: int = 0
 
         self.update.start()
 
@@ -67,6 +68,11 @@ class Undercutter(commands.Cog):
         # Don't check if we've already scanned this market.
         if current_market.id == self.__last_count_scanned:
             logger.info("Already scanned this market.")
+            if self.__false_counter > 5: # Ping Meaning when shit be broken
+                self.__false_counter = 0
+                owner = await self.bot.fetch_user(self.bot.owner_id)
+                await owner.send("Undercut checker is stuck in a loop. Scraper might be broken.")
+            self.__false_counter += 1
             return
         else:
             # Update the last scanned market count in db, to prevent rescanning.
