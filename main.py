@@ -18,7 +18,7 @@ class Vio(commands.Bot):
         )
         self.main_guild = discord.Object(id=int(os.getenv("MAIN_GUILD_ID")))
         self.affiliation_channel = int(os.getenv("AFFILIATION_CHANNEL"))
-        self.testing = bool(os.getenv("TESTING"))
+        self.testing = os.getenv("TESTING") == "True"
         self.db = VioDB(db_uri, database)
         self.up_time = discord.utils.utcnow()
 
@@ -51,7 +51,6 @@ class Vio(commands.Bot):
         await self.load_extension("ext.Market")
         await self.load_extension("ext.Valuation")
         await self.load_extension("ext.VioExclusive")
-        print(self.testing)
         if not self.testing: # Do not want to start pinging people if I am just testing with Prod DB (Testing DB does not have up to date stats)
             await self.load_extension("ext.Undercut")
         await self.tree.sync()

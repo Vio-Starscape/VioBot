@@ -64,71 +64,77 @@ class Undercutter(commands.Cog):
         Undercut checker.
         """
         logger.info("Checking for undercuts.")
-        current_market = await self.bot.db.get_current_market()
-        # Don't check if we've already scanned this market.
-        if current_market.id == self.__last_count_scanned:
-            logger.info("Already scanned this market.")
-            if self.__false_counter > 5: # Ping Meaning when shit be broken
-                self.__false_counter = 0
-                owner = await self.bot.fetch_user(self.bot.owner_id)
-                await owner.send("Undercut checker is stuck in a loop. Scraper might be broken.")
-            self.__false_counter += 1
-            return
-        else:
-            # Update the last scanned market count in db, to prevent rescanning.
-            await self.bot.db.set_last_undercut_check(current_market.id)
-            self.__last_count_scanned = current_market.id
+        try:
+            current_market = await self.bot.db.get_current_market()
+            # Don't check if we've already scanned this market.
+            if current_market.id == self.__last_count_scanned:
+                logger.info("Already scanned this market.")
+                if self.__false_counter > 5: # Ping Meaning when shit be broken
+                    self.__false_counter = 0
+                    owner = await self.bot.fetch_user(self.bot.owner_id)
+                    await owner.send("Undercut checker is stuck in a loop. Scraper might be broken.")
+                self.__false_counter += 1
+                return
+            else:
+                # Update the last scanned market count in db, to prevent rescanning.
+                await self.bot.db.set_last_undercut_check(current_market.id)
+                self.__last_count_scanned = current_market.id
 
-        tracked_accounts = await self.bot.db.get_users_tracked_accounts()
+            tracked_accounts = await self.bot.db.get_users_tracked_accounts()
 
-        tasks = []
+            tasks = []
 
-        for item in self.bot.items:
-            item_instance = current_market[item]
-            if not item_instance.valid:
-                continue
-            previous_instance = await self.bot.db.get_latest_valid_market_for_item_before(current_market.id, item)
-            sell_changes, buy_changes = item_instance.process_changes(previous_instance) # Get the Changes
-            for change in sell_changes:
-                if change.type == MarketChangeType.NEW: #If the sell change is a New Listing
-                    undercut_users: list[Listing] = []
-                    for i in item_instance.sell: # Get all the users who were undercut
-                        if i.price > change.original.price:
-                            undercut_users.append(i)
-                    seen = set()
-                    unique = [x for x in undercut_users if x.user.id not in seen and not seen.add(x.user.id)] # Remove duplicates
-                    for user in unique:
-                        logger.debug(f"{user.user.name} got undercut by {change.original.user.name} in {item}!")
-                        tracked = filter(lambda x: user.user.id in x["accounts"], tracked_accounts) # Get all the accounts that are tracking the user
-                        for account in tracked: # Send the alert to all the accounts
-                            tasks.append(self.alert_user_about_undercut(account['_id'], item, change, user, item_instance.sell))
-                # elif change.type == MarketChangeType.COMPLETED: # if the sell change is a completed listing
-                #     tracked = filter(lambda x: change.user.id in x["accounts"], tracked_accounts) # Get all the accounts that are tracking the user
-                #     for account in tracked: # Send the alert to all the accounts
-                #         tasks.append(self.alert_user_about_completed(account["_id"], item, change))
+            for item in self.bot.items:
+                item_instance = current_market[item]
+                if not item_instance.valid:
+                    continue
+                previous_instance = await self.bot.db.get_latest_valid_market_for_item_before(current_market.id, item)
+                sell_changes, buy_changes = item_instance.process_changes(previous_instance) # Get the Changes
+                for change in sell_changes:
+                    if change.type == MarketChangeType.NEW: #If the sell change is a New Listing
+                        undercut_users: list[Listing] = []
+                        for i in item_instance.sell: # Get all the users who were undercut
+                            if i.price > change.original.price:
+                                undercut_users.append(i)
+                        seen = set()
+                        unique = [x for x in undercut_users if x.user.id not in seen and not seen.add(x.user.id)] # Remove duplicates
+                        for user in unique:
+                            logger.debug(f"{user.user.name} got undercut by {change.original.user.name} in {item}!")
+                            tracked = filter(lambda x: user.user.id in x["accounts"], tracked_accounts) # Get all the accounts that are tracking the user
+                            for account in tracked: # Send the alert to all the accounts
+                                tasks.append(self.alert_user_about_undercut(account['_id'], item, change, user, item_instance.sell))
+                    # elif change.type == MarketChangeType.COMPLETED: # if the sell change is a completed listing
+                    #     tracked = filter(lambda x: change.user.id in x["accounts"], tracked_accounts) # Get all the accounts that are tracking the user
+                    #     for account in tracked: # Send the alert to all the accounts
+                    #         tasks.append(self.alert_user_about_completed(account["_id"], item, change))
 
-            for change in buy_changes: # Only difference is 'greater than' becomes 'less than'
-                if change.type == MarketChangeType.NEW:
-                    undercut_users: list[Listing] = []
-                    for i in item_instance.buy:
-                        if i.price < change.original.price:
-                            undercut_users.append(i)
-                    seen = set()
-                    unique = [x for x in undercut_users if x.user.id not in seen and not seen.add(x.user.id)]
-                    for user in unique:
-                        logger.debug(f"{user.user.name} got undercut by {change.original.user.name} in {item}!")
-                        tracked = filter(lambda x: user.user.id in x["accounts"], tracked_accounts)
-                        for account in tracked:
-                            tasks.append(self.alert_user_about_undercut(account['_id'], item, change, user, item_instance.buy))
-                # elif change.type == MarketChangeType.COMPLETED:
-                #     tracked = filter(lambda x: change.user.id in x["accounts"], tracked_accounts)
-                #     for account in tracked:
-                #         tasks.append(self.alert_user_about_completed(account["_id"], item, change))
-        
-        for task in tasks:
-            await task
-            await asyncio.sleep(1)
-        logger.info(f"Undercut check complete. Messages sent: {len(tasks)}")
+                for change in buy_changes: # Only difference is 'greater than' becomes 'less than'
+                    if change.type == MarketChangeType.NEW:
+                        undercut_users: list[Listing] = []
+                        for i in item_instance.buy:
+                            if i.price < change.original.price:
+                                undercut_users.append(i)
+                        seen = set()
+                        unique = [x for x in undercut_users if x.user.id not in seen and not seen.add(x.user.id)]
+                        for user in unique:
+                            logger.debug(f"{user.user.name} got undercut by {change.original.user.name} in {item}!")
+                            tracked = filter(lambda x: user.user.id in x["accounts"], tracked_accounts)
+                            for account in tracked:
+                                tasks.append(self.alert_user_about_undercut(account['_id'], item, change, user, item_instance.buy))
+                    # elif change.type == MarketChangeType.COMPLETED:
+                    #     tracked = filter(lambda x: change.user.id in x["accounts"], tracked_accounts)
+                    #     for account in tracked:
+                    #         tasks.append(self.alert_user_about_completed(account["_id"], item, change))
+            
+            for task in tasks:
+                try:
+                    await task
+                except Exception as e:
+                    logger.error(f"Error sending message: {e}")
+                await asyncio.sleep(1)
+            logger.info(f"Undercut check complete. Messages sent: {len(tasks)}")
+        except Exception as e:
+            logger.error(f"Error in undercut checker: {e}")
         
 
     @update.before_loop
