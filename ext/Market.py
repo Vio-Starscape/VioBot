@@ -49,7 +49,7 @@ class Market(commands.GroupCog, name="market"):
         await interaction.followup.send(
             # view=items.view,
             embed=selected.embed.set_image(url="attachment://graph.png"), 
-            ephemeral=True,
+            # ephemeral=True,
             file=await items.graph()
         )
     

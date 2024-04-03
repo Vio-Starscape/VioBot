@@ -42,7 +42,7 @@ class Valuation(commands.Cog):
 
         ## COMMAND IS NOW PUBLIC - 25/03/2024 @ 11:09 PM EST
         # if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
-        if random.randint(0, 5) != 3:
+        if random.randint(0, 1) != 1:
             responses = [
                 "WHERE AM I, WHO ARE YOU?!",
                 "WHAT DO YOU WANT FROM ME?!",
