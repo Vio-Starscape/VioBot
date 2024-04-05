@@ -1,7 +1,8 @@
 import asyncio
+import discord
 import logging
 from datetime import timezone
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from .marketinstance import MarketInstance
@@ -9,9 +10,13 @@ from .iteminstance import ItemInstance
 from .historyinstance import MarketHistoryInstance
 from .robloxuser import RobloxUser
 from .userinstance import UserInstance
+from .clientsettings import VioUser
 
 from PIL import Image
 from io import BytesIO
+
+if TYPE_CHECKING:
+    from main import Vio
 
 logger = logging.getLogger(__name__)
 
@@ -142,18 +147,35 @@ class VioDB:
         """Set the last undercut check."""
         logger.debug(f"Setting last undercut check to: {count}!")
         await self.db["Tracking"].update_one({"_id": 0}, {"$set": {"count": count}}, upsert=True)
+
+    async def is_user_allowed_undercut(self, user_id: int) -> bool:
+        """Check if a user is allowed to undercut."""
+        logger.debug(f"Checking if user: {user_id} is allowed to undercut!")
+        value = await self.db["Permissions"].find_one({"_id": user_id})
+        return value is not None and value.get('permissions', {}).get("undercut", False)
+
+    async def get_users_settings(self, user_id: int, bot: discord.Client, *, roblox_list: list[RobloxUser] = None) -> VioUser:
+        """Get a users settings."""
+        user = bot.get_user(user_id)
+        if user is None:
+            user = await bot.fetch_user(user_id)
+        logger.debug(f"Getting user settings for user: {user.name}!")
+        if roblox_list is None:
+            roblox_list = await self.get_roblox_users()
+        user_setting = await self.db["Permissions"].find_one({"_id": user.id}) or {}
+        new_roblox_list = {
+            next((i for i in roblox_list if i.id == int(roblox_id)), None): settings
+            for roblox_id, settings in user_setting.get("tracked_users", {}).items() 
+        }
+        user_setting["tracked_users"] = new_roblox_list
+        user_setting["discord_user"] = user
+        return VioUser(**user_setting)
     
-    async def get_users_tracked_accounts(self) -> list[dict[int, list[int]]]:
+    async def get_users_tracked_accounts(self, bot: "Vio") -> list[dict[int, list[int]]]:
         """Get all users and their tracked accounts."""
         logger.debug("Getting all users and their tracked accounts!")
         users_with_permissions = [i["_id"] async for i in self.db["Permissions"].find() if i.get("undercut", False)]
         return [doc async for doc in self.db["Tracking"].find({"_id": {"$ne": 0}}) if doc["_id"] in users_with_permissions]
-    
-    async def does_user_have_undercut_permission(self, user_id: int) -> bool:
-        """Check if a user has undercut permission."""
-        logger.debug(f"Checking if user: {user_id} has undercut permission!")
-        value = await self.db["Permissions"].find_one({"_id": user_id})
-        return value is not None and value.get("undercut", False)
     
     async def is_user_tracking_account(self, user_id: int, account_id: int) -> bool:
         """Check if a user is tracking an account."""
@@ -176,8 +198,11 @@ class VioDB:
         logger.debug(f"Getting latest valid market for item: {item} before count: {count}!")
 
         market = await self.db["Market"].find_one({"_id": {"$lt": count}, f"items.{item}": {"$exists": True}}, sort=[("_id", -1)])
+        if market is None:
+            return None
         market = await self.insert_roblox_users_to_market(market)
         market = await self.validate_timestamp(market)
+
 
         return MarketInstance(**market)[item]
 

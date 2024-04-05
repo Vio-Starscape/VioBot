@@ -47,7 +47,16 @@ class ItemInstance(BaseModel):
             matching_listing = previous_buy.get(listing.user.id)
             if matching_listing:
                 if matching_listing.price == listing.price and matching_listing.amount == listing.amount:
-                    pass
+                    buy_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.NO_CHANGE,
+                            price=listing.price,
+                            amount=listing.amount,
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
+                        )
+                    )
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
                     buy_changes.append(
                         ListingChange(
@@ -97,11 +106,20 @@ class ItemInstance(BaseModel):
             matching_listing = previous_sell.get(listing.user.id)
             if matching_listing:
                 if matching_listing.price == listing.price and matching_listing.amount == listing.amount:
-                    pass
+                    sell_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.NO_CHANGE,
+                            price=listing.price,
+                            amount=listing.amount,
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
+                        )
+                    )
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
                     sell_changes.append(
                         ListingChange(
-                            type=MarketChangeType.NEW,
+                            type=MarketChangeType.SOLD,
                             price=listing.price,
                             amount=listing.amount,
                             user=listing.user,
