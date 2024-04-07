@@ -96,8 +96,9 @@ async def stats(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 if __name__ == "__main__":
-    ext_logger = logging.getLogger('ext.Undercut')
-    ext_logger.setLevel(logging.DEBUG)
+    # DEBUG:
+    # ext_logger = logging.getLogger('ext.Undercut')
+    # ext_logger.setLevel(logging.DEBUG)
 
     vio.run(
         os.getenv("BOT_TOKEN"), 
