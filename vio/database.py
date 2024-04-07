@@ -10,7 +10,7 @@ from .iteminstance import ItemInstance
 from .historyinstance import MarketHistoryInstance
 from .robloxuser import RobloxUser
 from .userinstance import UserInstance
-from .clientsettings import VioUser
+from .clientsettings import VioUser, TrackedUserMarketSettings
 
 from PIL import Image
 from io import BytesIO
@@ -41,7 +41,9 @@ class VioDB:
             await resources_collection.insert_one({"_id": 0, "count": 0})
         if "Info" not in collection_names:
             logger.info("Creating Info collection!")
-            await self.db.create_collection("Info")
+            info_collection = await self.db.create_collection("Info")
+            info_collection.insert_one({"_id": 0, "items": []})
+            info_collection.insert_one({"_id": 1, "count": 0})
         if "Evaluation" not in collection_names:
             logger.info("Creating Evaluation collection!")
             await self.db.create_collection("Evaluation")
@@ -141,24 +143,30 @@ class VioDB:
     async def get_last_undercut_check(self) -> int:
         """Get the last undercut check."""
         logger.debug("Getting last undercut check!")
-        return (await self.db["Tracking"].find_one({"_id": 0}))["count"]
+        return (await self.db["Info"].find_one({"_id": 1}))["count"]
         
     async def set_last_undercut_check(self, count: int) -> None:
         """Set the last undercut check."""
         logger.debug(f"Setting last undercut check to: {count}!")
-        await self.db["Tracking"].update_one({"_id": 0}, {"$set": {"count": count}}, upsert=True)
+        await self.db["Info"].update_one({"_id": 1}, {"$set": {"count": count}}, upsert=True)
 
     async def is_user_allowed_undercut(self, user_id: int) -> bool:
         """Check if a user is allowed to undercut."""
         logger.debug(f"Checking if user: {user_id} is allowed to undercut!")
         value = await self.db["Permissions"].find_one({"_id": user_id})
         return value is not None and value.get('permissions', {}).get("undercut", False)
+    
+    async def update_user_settings(self, user_id: int, tracked_id:int,  settings: TrackedUserMarketSettings) -> None:
+        """Update a users settings."""
+        logger.debug(f"Updating user settings for user: {user_id}!")
+        await self.db["Permissions"].update_one(
+            {"_id": user_id},
+            {"$set": {f"tracked_users.{tracked_id}": settings.model_dump()}},
+            upsert=True
+        )
 
-    async def get_users_settings(self, user_id: int, bot: discord.Client, *, roblox_list: list[RobloxUser] = None) -> VioUser:
+    async def get_users_settings(self, user: discord.User, bot: discord.Client, *, roblox_list: list[RobloxUser] = None) -> VioUser:
         """Get a users settings."""
-        user = bot.get_user(user_id)
-        if user is None:
-            user = await bot.fetch_user(user_id)
         logger.debug(f"Getting user settings for user: {user.name}!")
         if roblox_list is None:
             roblox_list = await self.get_roblox_users()
@@ -171,27 +179,57 @@ class VioDB:
         user_setting["discord_user"] = user
         return VioUser(**user_setting)
     
-    async def get_users_tracked_accounts(self, bot: "Vio") -> list[dict[int, list[int]]]:
+    async def get_users_tracked_accounts(self, bot: "Vio", roblox_list: list[RobloxUser] = None) -> list[VioUser]:
         """Get all users and their tracked accounts."""
         logger.debug("Getting all users and their tracked accounts!")
-        users_with_permissions = [i["_id"] async for i in self.db["Permissions"].find() if i.get("undercut", False)]
-        return [doc async for doc in self.db["Tracking"].find({"_id": {"$ne": 0}}) if doc["_id"] in users_with_permissions]
+        users_permissions = []
+        if roblox_list is None:
+            roblox_list = await self.get_roblox_users()
+        async for doc in self.db["Permissions"].find():
+            user = bot.get_user(doc["_id"])
+            if user is None:
+                user = await bot.fetch_user(doc["_id"])
+            user_setting = await self.db["Permissions"].find_one({"_id": user.id}) or {}
+            new_roblox_list = {
+                next((i for i in roblox_list if i.id == int(roblox_id)), None): settings
+                for roblox_id, settings in user_setting.get("tracked_users", {}).items() 
+            }
+            user_setting["tracked_users"] = new_roblox_list
+            user_setting["discord_user"] = user
+            users_permissions.append(VioUser(**user_setting))
+        return users_permissions
     
     async def is_user_tracking_account(self, user_id: int, account_id: int) -> bool:
         """Check if a user is tracking an account."""
         logger.debug(f"Checking if user: {user_id} is tracking account: {account_id}!")
-        value = await self.db["Tracking"].find_one({"_id": user_id, "accounts": {"$in": [account_id]}})
+        value = await self.db["Permissions"].find_one({"_id": user_id, f"tracked_users.{account_id}": {"$exists": True}})
         return value is not None
     
     async def add_tracked_account(self, user_id: int, account_id: int) -> None:
         """Add a tracked account to a user."""
         logger.debug(f"Adding tracked account: {account_id} to user: {user_id}!")
-        await self.db["Tracking"].update_one({"_id": user_id}, {"$push": {"accounts": account_id}}, upsert=True)
+        await self.db["Permissions"].update_one(
+            {"_id": user_id},
+            {"$set": {f"tracked_users.{account_id}": {
+                "undercut": True,
+                "overcut": True,
+                "completion": False,
+                "new": False,
+                "top_only": False,
+                "market": {
+                    "active": False,
+                    "markets": []
+                }
+            }}}
+        )
 
     async def remove_tracked_account(self, user_id: int, account_id: int) -> None:
         """Remove a tracked account from a user."""
         logger.debug(f"Removing tracked account: {account_id} from user: {user_id}!")
-        await self.db["Tracking"].update_one({"_id": user_id}, {"$pull": {"accounts": account_id}})
+        await self.db["Permissions"].update_one(
+            {"_id": user_id},
+            {"$unset": {f"tracked_users.{account_id}": ""}}
+        )
 
     async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> MarketInstance:
         """Get the latest valid market for an item before a certain count."""
