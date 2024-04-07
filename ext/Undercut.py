@@ -203,12 +203,13 @@ class Undercutter(commands.GroupCog, name="undercut"):
             logger.debug("Already scanned this market.")
             if self.__false_counter > 60: # Ping Meaning when shit be broken
                 self.__false_counter = 0
-                owner = await self.bot.fetch_user(self.bot.owner_id)
+                owner = await self.bot.fetch_user(self.bot.owner_id or 160506586408812545)
                 await owner.send("Undercut checker is stuck in a loop. Scraper might be broken.")
             self.__false_counter += 1
             return
         else:
             # Update the last scanned market count in db, to prevent rescanning.
+            self.__false_counter = 0
             await self.bot.db.set_last_undercut_check(current_market.id)
             self.__last_count_scanned = current_market.id
         logger.info("Checking for undercuts.")
@@ -288,7 +289,6 @@ class Undercutter(commands.GroupCog, name="undercut"):
                                 tasks.setdefault(account, []).append(self.__undercut(item, change, user, item_instance.buy))
 
                 elif change.type == MarketChangeType.COMPLETED: # if the sell change is a completed listing
-                    print(change)
                     tracked = filter(lambda x: change.previous.user in x.tracked_users.keys(), tracked_accounts) # Get all the accounts that are tracking the user
                     for account in tracked: # Send the alert to all the accounts
                         settings = account.tracked_users[change.previous.user]
