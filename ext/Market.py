@@ -65,7 +65,7 @@ class Market(commands.GroupCog, name="market"):
                     f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
 
-        if await self.bot.db.does_user_have_undercut_permission(interaction.user.id):
+        if await self.bot.db.is_user_allowed_undercut(interaction.user.id):
             tracking = await self.bot.db.is_user_tracking_account(interaction.user.id, selected_user.id)
 
             await interaction.followup.send(
