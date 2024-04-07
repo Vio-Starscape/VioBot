@@ -299,7 +299,6 @@ class Undercutter(commands.GroupCog, name="undercut"):
             for embed in embeds:
                 await account.discord_user.send(embed=embed)
                 await asyncio.sleep(0.1)
-        
         logger.info(f"Undercut check complete. Messages sent to {len(tasks)} people.")
 
     @update.before_loop
