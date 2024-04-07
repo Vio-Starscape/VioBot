@@ -35,7 +35,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
         await interaction.response.send_message(
             embed=user.embed,
             view=user.view(self.bot),
-            # ephemeral=True
+            ephemeral=True
         )
 
     @app_commands.command(description="Whitelist a market for a certain user.")
@@ -196,12 +196,11 @@ class Undercutter(commands.GroupCog, name="undercut"):
 
         Undercut checker.
         """
-        logger.info("Checking for undercuts.")
         current_market = await self.bot.db.get_current_market()
 
         # Don't check if we've already scanned this market.
         if current_market.id == self.__last_count_scanned:
-            logger.info("Already scanned this market.")
+            logger.debug("Already scanned this market.")
             if self.__false_counter > 60: # Ping Meaning when shit be broken
                 self.__false_counter = 0
                 owner = await self.bot.fetch_user(self.bot.owner_id)
@@ -210,9 +209,9 @@ class Undercutter(commands.GroupCog, name="undercut"):
             return
         else:
             # Update the last scanned market count in db, to prevent rescanning.
-            # await self.bot.db.set_last_undercut_check(current_market.id)
-            # self.__last_count_scanned = current_market.id
-            ...
+            await self.bot.db.set_last_undercut_check(current_market.id)
+            self.__last_count_scanned = current_market.id
+        logger.info("Checking for undercuts.")
 
         tracked_accounts = await self.bot.db.get_users_tracked_accounts(self.bot)
 
@@ -255,7 +254,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                                 tasks.setdefault(account, []).append(self.__undercut(item, change, user, item_instance.sell))
 
                 elif change.type == MarketChangeType.COMPLETED: # if the sell change is a completed listing
-                    tracked = filter(lambda x: user.user in x.tracked_users.keys(), tracked_accounts) # Get all the accounts that are tracking the user
+                    tracked = filter(lambda x: change.previous.user in x.tracked_users.keys(), tracked_accounts) # Get all the accounts that are tracking the user
                     for account in tracked: # Send the alert to all the accounts
                         settings = account.tracked_users[change.previous.user]
                         if settings.completion and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
@@ -289,7 +288,8 @@ class Undercutter(commands.GroupCog, name="undercut"):
                                 tasks.setdefault(account, []).append(self.__undercut(item, change, user, item_instance.buy))
 
                 elif change.type == MarketChangeType.COMPLETED: # if the sell change is a completed listing
-                    tracked = filter(lambda x: user.user in x.tracked_users.keys(), tracked_accounts) # Get all the accounts that are tracking the user
+                    print(change)
+                    tracked = filter(lambda x: change.previous.user in x.tracked_users.keys(), tracked_accounts) # Get all the accounts that are tracking the user
                     for account in tracked: # Send the alert to all the accounts
                         settings = account.tracked_users[change.previous.user]
                         if settings.completion and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
@@ -299,7 +299,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
             for embed in embeds:
                 await account.discord_user.send(embed=embed)
                 await asyncio.sleep(0.1)
-        logger.info(f"Undercut check complete. Messages sent to {len(tasks)} people.")
+        logger.info(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people.")
 
     @update.before_loop
     async def before_update(self):

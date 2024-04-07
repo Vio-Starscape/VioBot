@@ -97,7 +97,7 @@ class ItemInstance(BaseModel):
                         price=listing.price,
                         amount=listing.amount,
                         user=listing.user,
-                        original=listing
+                        previous=listing
                     )
                 )
 
@@ -155,7 +155,8 @@ class ItemInstance(BaseModel):
                         type=MarketChangeType.COMPLETED,
                         price=listing.price,
                         amount=listing.amount,
-                        user=listing.user
+                        user=listing.user,
+                        previous=listing
                     )
                 )
 
