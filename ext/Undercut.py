@@ -184,7 +184,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
 
         embed = discord.Embed(
             title=f"{sale.user.name}'s {'buy' if sale.previous.type == ListingType.BUY else 'sell'} listing in {item} has disappeared!",
-            description=f"{sale.user.name} has {'sold' if sale.previous.type == ListingType.SELL else 'bought'} **{sale.previous.amount:,} {item}**"
+            description=f"{sale.user.name} has {'sold' if sale.previous.type == ListingType.BUY else 'bought'} **{sale.previous.amount:,} {item}**"
         )
 
         return embed
@@ -296,9 +296,14 @@ class Undercutter(commands.GroupCog, name="undercut"):
                             tasks.setdefault(account, []).append(self.__completed(item, change))
 
         for account, embeds in tasks.items():
-            for embed in embeds:
-                await account.discord_user.send(embed=embed)
-                await asyncio.sleep(0.1)
+            chunks = [embeds[i:i+10] for i in range(0, len(embeds), 10)]
+            for embed in chunks:
+                try:    
+                    await account.discord_user.send(embeds=embed)
+                    await asyncio.sleep(0.1)
+                except:
+                    logger.error(f"Failed to send message to {account.discord_user}.")
+                    break
         logger.info(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people.")
 
     @update.before_loop
