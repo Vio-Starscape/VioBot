@@ -57,7 +57,7 @@ class Vio(commands.Bot):
 
         self.update.start()
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=20)
     async def update(self):
         """Update task
 
@@ -96,6 +96,9 @@ async def stats(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 if __name__ == "__main__":
+    ext_logger = logging.getLogger('ext.Undercut')
+    ext_logger.setLevel(logging.DEBUG)
+
     vio.run(
         os.getenv("BOT_TOKEN"), 
         root_logger=True,
