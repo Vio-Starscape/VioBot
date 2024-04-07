@@ -10,6 +10,11 @@ class RobloxUser(BaseModel):
 
     def __hash__(self) -> int:
         return self.id.__hash__()
+    
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, RobloxUser):
+            return False
+        return self.id == value.id
 
     @root_validator(pre=True)
     def set_default_profiles(cls, values):
