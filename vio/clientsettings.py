@@ -59,7 +59,7 @@ class VioUser(BaseModel):
 
         embed.add_field(
             name=f"Tracked Users ({len(self.tracked_users)})",
-            value="\n".join(chunked_users[0])
+            value="\n".join(chunked_users[0]) if len(users) > 0 else "None"
         )
 
         for current_chunk in chunked_users[1:]:
