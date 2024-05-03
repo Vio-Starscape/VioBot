@@ -60,7 +60,7 @@ class VioDB:
         market_data["time_scanned"] = market_data["time_scanned"].replace(tzinfo=timezone.utc)
         return market_data
 
-    async def insert_roblox_users_to_market(self, market_data: dict, roblox_users: Optional[dict] = None, *, update: bool = False) -> None:
+    async def insert_roblox_users_to_market(self, market_data: dict, roblox_users: Optional[dict] = None) -> None:
         """Insert Roblox Users into the market data.
         
         This function will replace the Vendor ID with a Roblox User Object instead of the ID.
@@ -89,13 +89,13 @@ class VioDB:
         """Get the current count of market scans."""
         return (await self.db["Market"].find_one({"_id": 0}))["count"]
     
-    async def get_market_at_index(self, index: int, *, update: bool = False) -> MarketInstance:
+    async def get_market_at_index(self, index: int) -> MarketInstance:
         """Get the market at a specific index."""
         logger.debug(f"Getting market at index: {index}!")
         market = await self.db["Market"].find_one({"_id": index})
 
         # Inject Roblox Users into Market Data
-        completed_market_data = await self.insert_roblox_users_to_market(market, update=update)
+        completed_market_data = await self.insert_roblox_users_to_market(market)
 
         # Validate Timestamp
         completed_market_data = await self.validate_timestamp(completed_market_data)
@@ -105,9 +105,9 @@ class VioDB:
     async def get_current_market(self) -> MarketInstance:
         """Get the latest market scan."""
         logger.debug("Getting current market!")
-        count = (await self.get_current_count())-1
+        count = await self.get_current_count()
 
-        market = await self.get_market_at_index(count, update=True)
+        market = await self.get_market_at_index(count)
 
         return market
     
