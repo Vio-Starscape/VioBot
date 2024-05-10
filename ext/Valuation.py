@@ -64,7 +64,7 @@ class Valuation(commands.Cog):
         embeds = [
             discord.Embed(
                 title="Valuation",
-                description="This command is currently in Beta. All images are saved and used for future training. Some item names or Amount could be incorrect.",
+                description="This command is currently in Beta. Some item names or Amount could be incorrect.",
                 color=0xFF0000
             )
         ]
@@ -172,12 +172,6 @@ class Valuation(commands.Cog):
             buffered_format = BytesIO()
             image.save(buffered_format, format="PNG")
             buffered_format.seek(0)
-
-            await self.bot.db.upload_test_material(
-                response=response_dict,
-                orig_image=img_original,
-                pros_image=image
-            )
 
             if processed_images:
                 image_files.append(discord.File(fp=buffered_format, filename=f"img{i}.png"))

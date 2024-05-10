@@ -44,9 +44,6 @@ class VioDB:
             info_collection = await self.db.create_collection("Info")
             info_collection.insert_one({"_id": 0, "items": []})
             info_collection.insert_one({"_id": 1, "count": 0})
-        if "Evaluation" not in collection_names:
-            logger.info("Creating Evaluation collection!")
-            await self.db.create_collection("Evaluation")
         if "Permissions" not in collection_names:
             logger.info("Creating Permissions collection!")
             await self.db.create_collection("Permissions")
@@ -297,27 +294,6 @@ class VioDB:
         if perms is None:
             return False
         return perms["evaluation"]
-
-    async def upload_test_material(self, response: dict, orig_image: Image.Image, pros_image: Image.Image) -> None:
-        """Upload test material to the database."""
-        logger.debug("Uploading test material!")
-
-        orig_img_bytes = BytesIO()
-        orig_image.save(orig_img_bytes, format="PNG")
-        orig_img_bytes.seek(0)
-
-        pros_img_bytes = BytesIO()
-        pros_image.save(pros_img_bytes, format="PNG")
-        pros_img_bytes.seek(0)
-
-
-        data = {
-            "info": response,
-            "image": orig_img_bytes.getvalue(),
-            "processed": pros_img_bytes.getvalue()
-        }
-
-        await self.db["Evaluation"].insert_one(data)
     
     async def get_filtered_item_list(self, items: list[str]) -> dict[str, float]:
         """Get a list of all items in the market that match a filter."""
