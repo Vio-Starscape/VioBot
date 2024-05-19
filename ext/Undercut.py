@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 from fuzzywuzzy import process
 from discord.ext import tasks
-from vio import MarketChangeType, ListingChange, Listing, ListingType, VioUser, RobloxUser, TrackedUserMarketSettings
+from vio import MarketChangeType, ListingChange, Listing, ListingType, VioUser, ItemInstance
 from typing import List
 from main import Vio
 
@@ -184,7 +184,27 @@ class Undercutter(commands.GroupCog, name="undercut"):
 
         embed = discord.Embed(
             title=f"{sale.user.name}'s {'buy' if sale.previous.type == ListingType.BUY else 'sell'} listing in {item} has disappeared!",
-            description=f"{sale.user.name} has {'sold' if sale.previous.type == ListingType.BUY else 'bought'} **{sale.previous.amount:,} {item}**"
+            description=f"{sale.user.name} has {'sold' if sale.previous.type == ListingType.SELL else 'bought'} **{sale.previous.amount:,} {item}**"
+        )
+
+        return embed
+    
+    def __took_top_spot(self, item: str, listing: ListingChange, all_listings: List[Listing]):
+        embed = discord.Embed(
+            title=f"Top Listing Alert!",
+            description=f"**{listing.user.name}** has taken the top spot for **{item}** with **{listing.amount:,} {item}** for **{listing.price:,.2f}**"
+        )
+
+        listings_text = ""
+        for i in all_listings:
+            if i == listing:
+                listings_text += f"-> **{i.amount} @ {i.price:,.2f} by {i.user.name}**\n"
+            else:
+                listings_text += f"{i.amount} @ {i.price:,.2f} by {i.user.name}\n"
+
+        embed.add_field(
+            name="Listings",
+            value=listings_text
         )
 
         return embed
@@ -227,6 +247,21 @@ class Undercutter(commands.GroupCog, name="undercut"):
                 continue
             sell_changes, buy_changes = item_instance.process_changes(previous_instance) # Get the Changes
 
+            # Get the previous top sell user
+            previous_top_sell_user = previous_instance.sell[0].user if previous_instance.sell else None
+
+            # Get the current top sell user
+            current_top_sell_user = item_instance.sell[0].user if item_instance.sell else None
+
+            # If the top sell user has changed
+            if previous_top_sell_user and current_top_sell_user and previous_top_sell_user != current_top_sell_user:
+                logger.debug(f"{current_top_sell_user.name} has taken the top spot in {item}!")
+                tracked = filter(lambda x: current_top_sell_user in x.tracked_users.keys(), tracked_accounts)
+                for account in tracked:
+                    settings = account.tracked_users[current_top_sell_user]
+                    if settings.top and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
+                        tasks.setdefault(account, []).append(self.__took_top_spot(item, item_instance.sell[0], item_instance.sell))
+
             for change in sell_changes:
                 if change.type == MarketChangeType.NEW: #If the sell change is a New Listing
                     logger.debug(f"{change.original.user.name} listed {change.original.amount} {item} for {change.original.price:,.2f}!")
@@ -260,6 +295,22 @@ class Undercutter(commands.GroupCog, name="undercut"):
                         settings = account.tracked_users[change.previous.user]
                         if settings.completion and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
                             tasks.setdefault(account, []).append(self.__completed(item, change))
+
+
+            # Get the previous top buy user
+            previous_top_sell_user = previous_instance.buy[0].user if previous_instance.buy else None
+
+            # Get the current top buy user
+            current_top_sell_user = item_instance.buy[0].user if item_instance.buy else None
+
+            # If the top buy user has changed
+            if previous_top_sell_user and current_top_sell_user and previous_top_sell_user != current_top_sell_user:
+                logger.debug(f"{current_top_sell_user.name} has taken the top spot in {item}!")
+                tracked = filter(lambda x: current_top_sell_user in x.tracked_users.keys(), tracked_accounts)
+                for account in tracked:
+                    settings = account.tracked_users[current_top_sell_user]
+                    if settings.top and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
+                        tasks.setdefault(account, []).append(self.__took_top_spot(item, item_instance.buy[0], item_instance.buy))
 
             for change in buy_changes: # Only difference is 'greater than' becomes 'less than'
                 if change.type == MarketChangeType.NEW: #If the sell change is a New Listing
