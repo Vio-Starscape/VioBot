@@ -228,7 +228,7 @@ class VioDB:
             {"$unset": {f"tracked_users.{account_id}": ""}}
         )
 
-    async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> MarketInstance:
+    async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> ItemInstance:
         """Get the latest valid market for an item before a certain count."""
         logger.debug(f"Getting latest valid market for item: {item} before count: {count}!")
 

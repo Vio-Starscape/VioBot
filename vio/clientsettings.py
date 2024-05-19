@@ -18,6 +18,7 @@ class TrackedUserSettings(BaseModel):
     undercut: bool = True
     overcut: bool = True
     completion: bool = False
+    top: bool = False
     new: bool = False
 
     top_only: bool = False
@@ -202,9 +203,18 @@ class UndercutSettingsView(discord.ui.View):
             )
             self.add_item(
                 UndercutSettingsButton(
+                    self.toggle_took_top,
+                    label=f"{'Activate' if not user_settings.top else 'Disable'} Took Top",
+                    row=4,
+                    style=discord.ButtonStyle.success if not user_settings.top else discord.ButtonStyle.danger,
+                    disabled=False
+                )
+            )
+            self.add_item(
+                UndercutSettingsButton(
                     self.toggle_top_only,
                     label=f"{'Activate' if not user_settings.top_only else 'Disable'} Top Only",
-                    row=3,
+                    row=4,
                     style=discord.ButtonStyle.success if not user_settings.top_only else discord.ButtonStyle.danger,
                     disabled=False
                 )
@@ -285,6 +295,10 @@ class UndercutSettingsView(discord.ui.View):
 
     async def toggle_top_only(self, interaction: discord.Interaction):
         self.settings.tracked_users[self.selected_user].top_only = not self.settings.tracked_users[self.selected_user].top_only
+        await self.__update_user_settings(interaction)
+
+    async def toggle_took_top(self, interaction: discord.Interaction):
+        self.settings.tracked_users[self.selected_user].top = not self.settings.tracked_users[self.selected_user].top
         await self.__update_user_settings(interaction)
 
     async def on_user_select(self, interaction: discord.Interaction, user_id: int):
