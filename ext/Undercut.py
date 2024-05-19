@@ -135,7 +135,6 @@ class Undercutter(commands.GroupCog, name="undercut"):
                 return []
         return [app_commands.Choice(name="You do not have permission.", value=10)]
 
-
     def __new_listing(self, item: str, listing: Listing, all_listings: List[Listing]):
         
         embed = discord.Embed(

@@ -252,6 +252,7 @@ class UndercutSettingsView(discord.ui.View):
             value=f"Undercut: {settings.undercut}\n"
             f"Overcut: {settings.overcut}\n"
             f"Completion: {settings.completion}\n"
+            f"Took Top: {settings.top}\n"
             f"New: {settings.new}\n"
             f"Top Only: {settings.top_only}"
         )
