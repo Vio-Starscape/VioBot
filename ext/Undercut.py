@@ -209,7 +209,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
         return embed
 
 
-    @tasks.loop(seconds=30) # Run every 10 seconds
+    @tasks.loop(seconds=30, reconnect=True) # Run every 10 seconds
     async def update(self):
         """Update task
 
