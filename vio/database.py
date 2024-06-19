@@ -32,6 +32,10 @@ class VioDB:
             logger.info("Creating Market collection!")
             market_collection = await self.db.create_collection("Market")
             await market_collection.insert_one({"_id": 0, "count": 0})
+        if "MarketV2" not in collection_names:
+            logger.info("Creating MarketV2 collection!")
+            market_collection = await self.db.create_collection("MarketV2")
+            await market_collection.insert_one({"_id": 0, "count": 0, "items": [], "last": 0})
         if "Roblox" not in collection_names:
             logger.info("Creating Roblox collection!")
             await self.db.create_collection("Roblox")
@@ -84,12 +88,12 @@ class VioDB:
     
     async def get_current_count(self) -> int:
         """Get the current count of market scans."""
-        return (await self.db["Market"].find_one({"_id": 0}))["count"]
+        return (await self.db["MarketV2"].find_one({"_id": 0}))["count"]
     
     async def get_market_at_index(self, index: int) -> MarketInstance:
         """Get the market at a specific index."""
         logger.debug(f"Getting market at index: {index}!")
-        market = await self.db["Market"].find_one({"_id": index})
+        market = await self.db["MarketV2"].find_one({"_id": index})
 
         # Inject Roblox Users into Market Data
         completed_market_data = await self.insert_roblox_users_to_market(market)
@@ -232,7 +236,7 @@ class VioDB:
         """Get the latest valid market for an item before a certain count."""
         logger.debug(f"Getting latest valid market for item: {item} before count: {count}!")
 
-        market = await self.db["Market"].find_one({"_id": {"$lt": count}, f"items.{item}": {"$exists": True}}, sort=[("_id", -1)])
+        market = await self.db["MarketV2"].find_one({"_id": {"$lt": count}, f"items.{item}": {"$exists": True}}, sort=[("_id", -1)])
         if market is None:
             return None
         market = await self.insert_roblox_users_to_market(market)
@@ -272,7 +276,7 @@ class VioDB:
         # This is going to greatly reduce the amount of time it takes to process all the data.
         tasks = []
         current_count = await self.get_current_count()
-        async for doc in self.db["Market"].find(
+        async for doc in self.db["MarketV2"].find(
             {"_id": {"$gt": current_count - depth if depth is not None else 0}},
             {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
             tasks.append(process_document(doc, item, item_instances, roblox_users))
@@ -283,7 +287,7 @@ class VioDB:
     async def get_item_list(self) -> list[str]:
         """Get a list of all items in the market."""
         logger.debug("Getting item list!")
-        return list((await self.db["Info"].find_one({"_id": 0}))["items"])
+        return list((await self.db["MarketV2"].find_one({"_id": 0}))["items"])
 
     # Vio Testing
 
@@ -303,7 +307,7 @@ class VioDB:
 
         documents = {}
         for item in items:
-            document = await self.db["Market"].find_one(
+            document = await self.db["MarketV2"].find_one(
                 {
                     "_id": {"$gt": 0},
                     f"items.{item}": {"$exists": True}
