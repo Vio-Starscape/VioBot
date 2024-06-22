@@ -187,9 +187,9 @@ class UndercutSettingsView(discord.ui.View):
             self.add_item(
                 UndercutSettingsButton(
                     self.toggle_changes,
-                    label=f"{'Activate' if not user_settings.overcut else 'Disable'} Changes",
+                    label=f"{'Activate' if not user_settings.changes else 'Disable'} Changes",
                     row=3,
-                    style=discord.ButtonStyle.success if not user_settings.overcut else discord.ButtonStyle.danger,
+                    style=discord.ButtonStyle.success if not user_settings.changes else discord.ButtonStyle.danger,
                     disabled=False
                 )
             )
