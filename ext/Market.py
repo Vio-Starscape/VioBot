@@ -7,7 +7,6 @@ from main import Vio
 
 logger = logging.getLogger(__name__)
 
-
 @app_commands.allowed_installs(guilds=True, users=True)
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 class Market(commands.GroupCog, name="market",):
@@ -22,9 +21,7 @@ class Market(commands.GroupCog, name="market",):
             await interaction.response.send_message("I haven't seen that item before! ;-;", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
-        logger.info(f"Getting information about item: {item} | By: {interaction.user} | "
-                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
-                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
+        logger.info(f"Getting information about item: {item} | By: {interaction.user}")
         items = await self.bot.db.get_item_history(item, depth=2010)
         selected = items.latest_usable()
         await interaction.followup.send(
@@ -63,9 +60,7 @@ class Market(commands.GroupCog, name="market",):
         await interaction.response.defer(thinking=True)
 
         selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
-        logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user} | "
-                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
-                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})")
+        logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user}")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
 
         if await self.bot.db.is_user_allowed_undercut(interaction.user.id):

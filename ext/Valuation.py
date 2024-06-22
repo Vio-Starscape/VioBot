@@ -52,9 +52,7 @@ class Valuation(commands.Cog):
         #     return
 
         await interaction.response.defer(thinking=True, ephemeral=(not flex))
-        logger.info(f"Getting valuation of items. By: {interaction.user} | "
-                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name} "
-                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})" +
+        logger.info(f"Getting valuation of items. By: {interaction.user}" +
                     "".join([f"\n\tAttachment: {inventory.filename}, {inventory.content_type}, {inventory.size}"
                              for inventory in images])
                     )
