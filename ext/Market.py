@@ -13,6 +13,8 @@ class Market(commands.GroupCog, name="market"):
         self.bot = bot
 
     @app_commands.command()
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def item(self, interaction: discord.Interaction, item: str):
         """Get information about an item."""
         if item not in self.bot.items:
@@ -46,6 +48,8 @@ class Market(commands.GroupCog, name="market"):
             ]
     
     @app_commands.command()
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def user(self, interaction: discord.Interaction, vendor: str):
         """Get information about a user."""
         try:

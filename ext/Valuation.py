@@ -20,6 +20,8 @@ class Valuation(commands.Cog):
 
     @app_commands.command(description="Given an image of your inventory, I will evaluate the value of your items.")
     @app_commands.describe(flex="Whether or not you want to flex your wealth.", processed_images="Whether or not you want to see the processed images.")
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def evaluation(self, 
                          interaction: discord.Interaction,
                          image1: discord.Attachment, 
