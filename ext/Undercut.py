@@ -1,6 +1,7 @@
 import discord
 import logging
 import asyncio
+import time
 from discord import app_commands
 from discord.ext import commands
 from fuzzywuzzy import process
@@ -194,6 +195,15 @@ class Undercutter(commands.GroupCog, name="undercut"):
 
         return embed
     
+    def __changed(self, item: str, change: ListingChange):
+        embed = discord.Embed(
+            title=f"{change.user.name} Update!",
+            description=f"**{change.user.name}** has {'sold' if change.previous.type == ListingType.SELL else 'bought'}"
+                        f"**{change.previous.amount - change.original.amount:,} {item}** for **{change.previous.price:,.2f}** for a total of **{change.previous.price * (change.previous.amount - change.original.amount):,.2f}**"
+        )
+
+        return embed
+    
     def __took_top_spot(self, item: str, listing: ListingChange, all_listings: List[Listing]):
         embed = discord.Embed(
             title=f"Top Listing Alert!",
@@ -238,6 +248,8 @@ class Undercutter(commands.GroupCog, name="undercut"):
             await self.bot.db.set_last_undercut_check(current_market.id)
             self.__last_count_scanned = current_market.id
         logger.info("Checking for undercuts.")
+        
+        start = time.perf_counter()
 
         tracked_accounts = await self.bot.db.get_users_tracked_accounts(self.bot)
 
@@ -276,7 +288,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                     for account in tracked:
                         settings = account.tracked_users[change.original.user]
                         if settings.new and ((settings.market.active and item in settings.market.markets) or not settings.market.active): # Add the embed to this account's tasks
-                            tasks.setdefault(account, []).append(self.__new_listing(item, change.original, item_instance.sell))
+                            tasks.setdefault(account, []).append(self.__new_liOvercutsting(item, change.original, item_instance.sell))
                     
                     # Get all the users who were undercut
                     undercut_users: list[Listing] = []
@@ -299,6 +311,14 @@ class Undercutter(commands.GroupCog, name="undercut"):
                     for account in tracked: # Send the alert to all the accounts
                         settings = account.tracked_users[change.previous.user]
                         if settings.completion and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
+                            tasks.setdefault(account, []).append(self.__completed(item, change))
+                            
+                elif change.type == MarketChangeType.SOLD:
+                    logger.debug(f"{change.previous.user.name} sold {change.previous.amount - change.original.amount} {item} for {change.previous.price:,.2f}!")
+                    tracked = filter(lambda x: change.previous.user in x.tracked_users.keys(), tracked_accounts)
+                    for account in tracked:
+                        settings = account.tracked_users[change.previous.user]
+                        if settings.changes and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
                             tasks.setdefault(account, []).append(self.__completed(item, change))
 
 
@@ -350,6 +370,14 @@ class Undercutter(commands.GroupCog, name="undercut"):
                         settings = account.tracked_users[change.previous.user]
                         if settings.completion and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
                             tasks.setdefault(account, []).append(self.__completed(item, change))
+                            
+                elif change.type == MarketChangeType.SOLD:
+                    logger.debug(f"{change.previous.user.name} sold {change.previous.amount - change.original.amount} {item} for {change.previous.price:,.2f}!")
+                    tracked = filter(lambda x: change.previous.user in x.tracked_users.keys(), tracked_accounts)
+                    for account in tracked:
+                        settings = account.tracked_users[change.previous.user]
+                        if settings.changes and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
+                            tasks.setdefault(account, []).append(self.__completed(item, change))
 
         for account, embeds in tasks.items():
             chunks = [embeds[i:i+10] for i in range(0, len(embeds), 10)]
@@ -360,7 +388,10 @@ class Undercutter(commands.GroupCog, name="undercut"):
                 except:
                     logger.error(f"Failed to send message to {account.discord_user}.")
                     break
-        logger.info(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people.")
+                
+        end = time.perf_counter()
+        
+        logger.info(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people. Took {end - start:.2f} seconds.")
 
     @update.before_loop
     async def before_update(self):
