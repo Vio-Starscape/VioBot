@@ -12,6 +12,8 @@ from main import Vio
 
 logger = logging.getLogger(__name__)
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 class Undercutter(commands.GroupCog, name="undercut"):
 
     def __init__(self, bot: Vio):
@@ -30,8 +32,6 @@ class Undercutter(commands.GroupCog, name="undercut"):
         return False
 
     @app_commands.command(description="Settings for the Undercut pinger.")
-    @app_commands.allowed_installs(guilds=True, users=True)
-    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def settings(self, interaction: discord.Interaction):
         """Settings for the Undercut Checker."""
         user = await self.bot.db.get_users_settings(interaction.user, self.bot)
@@ -42,8 +42,6 @@ class Undercutter(commands.GroupCog, name="undercut"):
         )
 
     @app_commands.command(description="Whitelist a market for a certain user.")
-    @app_commands.allowed_installs(guilds=True, users=True)
-    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def whitelist(self, interaction: discord.Interaction, user: int, market: str):
         tracked_accounts = await self.bot.db.get_users_settings(interaction.user, self.bot, roblox_list=self.bot.roblox_users)
         if user not in (roblox_user.id for roblox_user in tracked_accounts.tracked_users.keys()):
@@ -64,8 +62,6 @@ class Undercutter(commands.GroupCog, name="undercut"):
             await interaction.response.send_message(f"Failed to whitelist {market} for {user.name}.", ephemeral=True)
 
     @app_commands.command(description="Delist a market for a certain user.")
-    @app_commands.allowed_installs(guilds=True, users=True)
-    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def delist(self, interaction: discord.Interaction, user: int, market: str):
         tracked_accounts = await self.bot.db.get_users_settings(interaction.user, self.bot, roblox_list=self.bot.roblox_users)
         if user not in (roblox_user.id for roblox_user in tracked_accounts.tracked_users.keys()):
