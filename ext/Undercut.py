@@ -194,8 +194,18 @@ class Undercutter(commands.GroupCog, name="undercut"):
     def __changed(self, item: str, change: ListingChange):
         embed = discord.Embed(
             title=f"{change.user.name} Update!",
-            description=f"**{change.user.name}** has {'sold' if change.previous.type == ListingType.SELL else 'bought'}"
+            description=f"**{change.user.name}** has {'sold' if change.previous.type == ListingType.SELL else 'bought'} "
                         f"**{change.previous.amount - change.original.amount:,} {item}** for **{change.previous.price:,.2f}** for a total of **{change.previous.price * (change.previous.amount - change.original.amount):,.2f}**"
+        )
+        
+        embed.add_field(
+            name="Previous",
+            value=f"**{change.previous.amount} @ {change.previous.price:,.2f}**"
+        )
+        
+        embed.add_field(
+            name="Current",
+            value=f"**{change.original.amount} @ {change.original.price:,.2f}**"
         )
 
         return embed
