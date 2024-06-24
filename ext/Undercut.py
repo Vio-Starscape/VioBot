@@ -315,7 +315,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                     for account in tracked:
                         settings = account.tracked_users[change.previous.user]
                         if settings.changes and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
-                            tasks.setdefault(account, []).append(self.__completed(item, change))
+                            tasks.setdefault(account, []).append(self.__changed(item, change))
 
 
             # Get the previous top buy user
@@ -373,7 +373,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                     for account in tracked:
                         settings = account.tracked_users[change.previous.user]
                         if settings.changes and ((settings.market.active and item in settings.market.markets) or not settings.market.active):
-                            tasks.setdefault(account, []).append(self.__completed(item, change))
+                            tasks.setdefault(account, []).append(self.__changed(item, change))
 
         for account, embeds in tasks.items():
             chunks = [embeds[i:i+10] for i in range(0, len(embeds), 10)]
