@@ -253,7 +253,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
             self.__false_counter = 0
             await self.bot.db.set_last_undercut_check(current_market.id)
             self.__last_count_scanned = current_market.id
-        logger.info("Checking for undercuts.")
+        logger.debug("Checking for undercuts.")
         
         start = time.perf_counter()
 
@@ -397,7 +397,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                 
         end = time.perf_counter()
         
-        logger.info(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people. Took {end - start:.2f} seconds.")
+        logger.debug(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people. Took {end - start:.2f} seconds.")
 
     @update.before_loop
     async def before_update(self):
