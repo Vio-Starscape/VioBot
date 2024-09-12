@@ -20,8 +20,11 @@ class Undercutter(commands.GroupCog, name="undercut"):
         self.bot = bot
         self.__last_count_scanned: int = 0
         self.__false_counter: int = 0
-
-        if not self.bot.TESTING: # Do not want to start pinging people if I am just testing with Prod DB (Testing DB does not have up to date stats)
+            
+    @commands.Cog.listener()
+    async def on_ready(self):
+        logger.info("Undercut checker ready.")
+        if not self.bot.TESTING and not self.update.is_running(): # Do not want to start pinging people if I am just testing with Prod DB (Testing DB does not have up to date stats)
             self.update.start()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -397,13 +400,18 @@ class Undercutter(commands.GroupCog, name="undercut"):
                 
         end = time.perf_counter()
         
-        logger.debug(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people. Took {end - start:.2f} seconds.")
+        logger.info(f"Undercut check complete. {sum([len(i) for i in tasks.values()])} messages sent to {len(tasks)} people. Took {end - start:.2f} seconds.")
 
     @update.before_loop
     async def before_update(self):
         await self.bot.wait_until_ready()
         logger.info("Undercut checker ready.")
         self.__last_count_scanned = await self.bot.db.get_last_undercut_check()
+        
+    @update.error
+    async def update_error(self, error):
+        logger.error(f"Undercut checker failed with error: {error}")
+        self.update.restart()
 
 async def setup(bot: Vio):
     await bot.add_cog(Undercutter(bot))
