@@ -149,7 +149,8 @@ class VioDB:
 
     async def is_user_allowed_undercut(self, user_id: int) -> bool:
         """Check if a user is allowed to undercut."""
-        logger.debug(f"Checking if user: {user_id} is allowed to undercut!")
+        logger.debug(f"Checking if user: {user_id} is allowed to undercut! (True)")
+        return True
         value = await self.db["Permissions"].find_one({"_id": user_id})
         return value is not None and value.get('permissions', {}).get("undercut", False)
     

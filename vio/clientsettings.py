@@ -8,7 +8,11 @@ if TYPE_CHECKING:
 
 class VioPermissions(BaseModel):
     evaluation: bool = False
-    undercut: bool = False
+    undercut: bool = True
+    
+    @property
+    def undercut(self):
+        return True
 
 class TrackedUserMarketSettings(BaseModel):
     active: bool = False
