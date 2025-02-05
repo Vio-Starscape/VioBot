@@ -1,4 +1,5 @@
 import discord
+import discord.types
 from .robloxuser import RobloxUser
 from pydantic import BaseModel
 from typing import List, Dict, TYPE_CHECKING
@@ -78,7 +79,7 @@ class VioUser(BaseModel):
     
     def view(self, bot: "Vio"):
         if len(self.tracked_users) == 0:
-            return None
+            return discord.utils.MISSING
         return UndercutSettingsView(self, bot)
     
 class UserSelect(discord.ui.Select):
