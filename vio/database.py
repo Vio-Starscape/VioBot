@@ -218,7 +218,8 @@ class VioDB:
                     "active": False,
                     "markets": []
                 }
-            }}}
+            }}},
+            upsert=True # Needed to create the document if it doesn't exist.
         )
 
     async def remove_tracked_account(self, user_id: int, account_id: int) -> None:
