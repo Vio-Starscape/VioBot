@@ -1,7 +1,7 @@
 import asyncio
 import discord
 import logging
-from datetime import timezone
+from datetime import timezone, date, datetime, timedelta
 from typing import Optional, TYPE_CHECKING
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -281,7 +281,50 @@ class VioDB:
         await asyncio.gather(*tasks)
 
         return MarketHistoryInstance(item_instances)
+    
+    async def get_item_history_after_date(self, item: str, *, depth: Optional[int] = 4 ) -> MarketHistoryInstance:
+        """Get the history of an item after a specific date.
+        
+        Args:
+            item (str): The item to get the history for.
+            depth (Optional[int]): The depth to get the history for. Defaults to Complete History.
+        """
 
+        logger.debug(f"Getting item history: {item}!")
+
+        async def process_document(document: dict, item_name: str, final_dict: dict, roblox: dict):
+            """Process a document and add it to the final dict."""
+            market_data = await self.insert_roblox_users_to_market(document, roblox)
+            market_data = await self.validate_timestamp(market_data)
+
+            item_instance = MarketInstance(**market_data)[item_name]
+
+            final_dict[item_instance.id] = item_instance
+
+        # Get all roblox users and store them in a dict so that we can use them for every document.
+        # This is going to greatly reduce the amount of requests we make to the database.
+        roblox_users = {doc["_id"]: doc async for doc in self.db["Roblox"].find()}
+
+        # Create a dict to store all the item instances.
+        item_instances = {}
+
+        # Create a list of tasks to run.
+        # This will allow us to run all the tasks at the same time.
+        # This is going to greatly reduce the amount of time it takes to process all the data.
+        tasks = []
+        
+        date_limit = (datetime.now(timezone.utc) - timedelta(weeks=depth)).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        
+        async for doc in self.db["Market"].find(
+            {"time_scanned": {"$gt": date_limit}, f"items.{item}": {"$exists": True}},
+            {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
+            tasks.append(process_document(doc, item, item_instances, roblox_users))
+        await asyncio.gather(*tasks)
+
+        return MarketHistoryInstance(item_instances)
+        
+        
     async def get_item_list(self) -> list[str]:
         """Get a list of all items in the market."""
         logger.debug("Getting item list!")
