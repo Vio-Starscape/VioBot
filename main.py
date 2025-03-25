@@ -31,9 +31,10 @@ class Vio(commands.Bot):
         )
 
         logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
+        logger.info(f"Connected to {self.application.approximate_user_install_count} Users directly!")
         logger.info(f"Connected to {len(self.guilds)} guilds!")
         logger.info("-"*20)
-        for guild in sorted(self.guilds, key=lambda g: g.me.joined_at):
+        for guild in sorted(self.guilds, key=lambda g: g.me.joined_at if g.me else None):
             logger.info(f"\t{guild.name} (ID: {guild.id})")
         logger.info("-"*20)
 
@@ -88,7 +89,11 @@ async def stats(interaction: discord.Interaction):
     )
     embed.add_field(
         name="Guilds",
-        value=f"Count: {len(vio.guilds)}"
+        value=f"Count: {vio.application.approximate_guild_count}"
+    )
+    embed.add_field(
+        name="Users",
+        value=f"Count: {vio.application.approximate_user_install_count}"
     )
     embed.set_footer(
         text=f"Version: {os.getenv('VERSION')}"

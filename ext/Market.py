@@ -15,15 +15,15 @@ class Market(commands.GroupCog, name="market",):
         self.bot = bot
 
     @app_commands.command()
-    @app_commands.describe(item="The item you want to get information about.", depth="How many scans you want to go back in time. (Larger Number = longer time)")
-    async def item(self, interaction: discord.Interaction, item: str, depth: app_commands.Range[int, 2000, 15000] = 2010):
+    @app_commands.describe(item="The item you want to get information about.", depth="How many weeks you want to go back in time.")
+    async def item(self, interaction: discord.Interaction, item: str, depth: app_commands.Range[int, 1, 36] = 4):
         """Get information about an item."""
         if item not in self.bot.items:
             await interaction.response.send_message("I haven't seen that item before! ;-;", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
         logger.info(f"Getting information about item: {item} | By: {interaction.user} | Depth: {depth}")
-        items = await self.bot.db.get_item_history(item, depth=depth)
+        items = await self.bot.db.get_item_history_after_date(item, depth=depth)
         selected = items.latest_usable()
         await interaction.followup.send(
             # view=items.view,

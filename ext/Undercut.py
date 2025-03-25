@@ -297,7 +297,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                     for account in tracked:
                         settings = account.tracked_users[change.original.user]
                         if settings.new and ((settings.market.active and item in settings.market.markets) or not settings.market.active): # Add the embed to this account's tasks
-                            tasks.setdefault(account, []).append(self.__new_liOvercutsting(item, change.original, item_instance.sell))
+                            tasks.setdefault(account, []).append(self.__new_listing(item, change.original, item_instance.sell))
                     
                     # Get all the users who were undercut
                     undercut_users: list[Listing] = []
