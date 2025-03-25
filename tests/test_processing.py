@@ -40,7 +40,7 @@ class TestOCR(unittest.TestCase):
 
                 for x, y in zip(data, response):
                     try:
-                        self.assertEquals(x, y)
+                        self.assertEqual(x, y)
                     except AssertionError:
                         # Image.fromarray(imgs[x[0]][0]).save("error.png")
                         # Image.fromarray(imgs[x[0]][1]).save("error2.png")
