@@ -96,7 +96,7 @@ class UserInstanceView(discord.ui.View):
         await super().on_timeout()
 
     async def on_track(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != interaction.message.interaction.user.id:
+        if interaction.user.id != interaction.message.interaction_metadata.user.id:
             await interaction.response.send_message("Run the command yourself to track this user.", ephemeral=True)
             return
         await self.bot.db.add_tracked_account(interaction.user.id, self.user_instance.user.id)
@@ -106,7 +106,7 @@ class UserInstanceView(discord.ui.View):
         await interaction.followup.send(f"Started tracking {self.user_instance.user.name}.", ephemeral=True)
 
     async def on_stop_tracking(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != interaction.message.interaction.user.id:
+        if interaction.user.id != interaction.message.interaction_metadata.user.id:
             await interaction.response.send_message("Run the command yourself to strop tracking this user.", ephemeral=True)
             return
         await self.bot.db.remove_tracked_account(interaction.user.id, self.user_instance.user.id)
