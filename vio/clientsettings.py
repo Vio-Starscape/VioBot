@@ -79,7 +79,7 @@ class VioUser(BaseModel):
     
     def view(self, bot: "Vio"):
         if len(self.tracked_users) == 0:
-            return None
+            return discord.utils.MISSING
         return UndercutSettingsView(self, bot)
     
 class UserSelect(discord.ui.Select):
