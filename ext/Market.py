@@ -23,14 +23,21 @@ class Market(commands.GroupCog, name="market",):
             return
         await interaction.response.defer(thinking=True)
         logger.info(f"Getting information about item: {item} | By: {interaction.user} | Depth: {depth}")
-        items = await self.bot.db.get_item_history_after_date(item, depth=depth)
-        selected = items.latest_usable()
-        await interaction.followup.send(
-            # view=items.view,
-            embed=selected.embed.set_image(url="attachment://graph.png"), 
-            ephemeral=True,
-            file=await items.graph()
-        )
+        try:
+            items = await self.bot.db.get_item_history_after_date(item, depth=depth)
+            selected = items.latest_usable()
+            await interaction.followup.send(
+                # view=items.view,
+                embed=selected.embed.set_image(url="attachment://graph.png"), 
+                ephemeral=True,
+                file=await items.graph()
+            )
+        except ValueError:
+            item = await self.bot.db.get_latest_valid_market_for_item_before(10_000_000, item=item)
+            await interaction.followup.send(
+                embed=item.embed,
+                ephemeral=True,
+            )
 
     @item.autocomplete("item")
     async def item_autocomplete(self, ctx: commands.Context, item: str):

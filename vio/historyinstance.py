@@ -8,12 +8,16 @@ from enum import Enum
 from typing import Dict, Optional
 from scipy.signal import savgol_filter
 
-from .marketchanges import MarketChangeType
+from .marketchanges import MarketChangeType, ListingChange
 from .iteminstance import ItemInstance
 
 class MarketHistoryInstance:
 
     def __init__(self, item_instances: Dict[int, ItemInstance]):
+        if not item_instances:
+            raise ValueError("item_instances cannot be empty. No data available for the requested item.")
+
+        
         self.item_instances = item_instances
         self.max_page = max(item_instances.keys())
         self.min_page = min(item_instances.keys())
@@ -40,13 +44,16 @@ class MarketHistoryInstance:
         # Process the changes
         sell_changes, buy_changes = instance1 - instance2
 
-        def changes_to_string(listing: list):
-            if listing[0] == MarketChangeType.NEW:
-                return f"New listing for {listing[2]:,} at {listing[1]:,.2f} by **{listing[3].name}**"
-            elif listing[0] == MarketChangeType.SOLD:
-                return f"{listing[3].name} fulfilled {listing[2]:,} at {listing[1]:,.2f}"
-            elif listing[0] == MarketChangeType.COMPLETED:
-                return f"{listing[3].name} fulfilled {listing[2]:,} at {listing[1]:,.2f} completing the listing!"
+        def changes_to_string(listing: ListingChange):
+            print(listing)
+            if listing.type == MarketChangeType.NEW:
+                return f"New listing for {listing.amount:,} at {listing.price:,.2f} by **{listing.user.name}**"
+            elif listing.type == MarketChangeType.SOLD:
+                return f"{listing.user.name} fulfilled {listing.amount:,} at {listing.price:,.2f}"
+            elif listing.type == MarketChangeType.COMPLETED:
+                return f"{listing.user.name} fulfilled {listing.amount:,} at {listing.price:,.2f} completing the listing!"
+            elif listing.type == MarketChangeType.NO_CHANGE:
+                return f"{listing.user.name} had no change at {listing.price:,.2f}"
 
         change_embed = discord.Embed(
             title=f"Market Change for {self.name}",
@@ -143,6 +150,13 @@ class MarketHistoryInstance:
 
         return lst
     
+    def __adjust_window_length(self, data_length: int, default_length: int = 51) -> int:
+        """Adjust the window length for Savitzky-Golay filter to ensure it is valid."""
+        if data_length < default_length:
+            # Ensure window_length is odd and less than or equal to data_length
+            return max(3, data_length if data_length % 2 == 1 else data_length - 1)
+        return default_length
+    
 
     async def graph_between_pages(self, *, page1: Optional[int] = None, page2: Optional[int] = None) -> discord.File:
         """Graph the difference between two pages."""
@@ -164,11 +178,13 @@ class MarketHistoryInstance:
         volume_buy = self.__interpolate_zeros([i.buy_volume for i in self.item_instances.values() if page1 <= i.id <= page2])
         volume_sell = self.__interpolate_zeros([i.sell_volume for i in self.item_instances.values() if page1 <= i.id <= page2])
 
+        window_length = self.__adjust_window_length(len(average_sell))
+
         # Smoothing the Curve
-        average_sell_smooth = savgol_filter(average_sell, 51, 3)
-        average_buy_smooth = savgol_filter(average_buy, 51, 3)
-        volume_buy_smooth = savgol_filter(volume_buy, 51, 3)
-        volume_sell_smooth = savgol_filter(volume_sell, 51, 3)
+        average_sell_smooth = savgol_filter(average_sell, window_length, 3)
+        average_buy_smooth = savgol_filter(average_buy, window_length, 3)
+        volume_buy_smooth = savgol_filter(volume_buy, window_length, 3)
+        volume_sell_smooth = savgol_filter(volume_sell, window_length, 3)
 
         # Make sure its no 0
         average_buy_smooth = [max(0, i) for i in average_buy_smooth]
