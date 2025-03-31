@@ -80,7 +80,8 @@ async def stats(interaction: discord.Interaction):
 
     embed = discord.Embed(
         title="General Information",
-        description="Here is some general information regarding Vio.\nCreated by `Meaning`",
+        url="https://v-io.info/",
+        description="Here is some general information regarding Vio.\nSupport me [here](https://ko-fi.com/meaning)\nCreated by `Meaning`",
         color=discord.Color.blurple()
     )
     embed.add_field(
