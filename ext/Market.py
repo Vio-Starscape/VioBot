@@ -1,5 +1,7 @@
 import discord
+import asyncio
 import logging
+import random
 from discord import app_commands
 from discord.ext import commands
 from fuzzywuzzy import process
@@ -13,6 +15,23 @@ class Market(commands.GroupCog, name="market",):
     
     def __init__(self, bot: Vio):
         self.bot = bot
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        if random.randint(0, 1) != 1:
+            logger.warning(f"Command failed cause of April Fools.")
+            responses = [
+                "WHERE AM I, WHO ARE YOU?!",
+                "WHAT DO YOU WANT FROM ME?!",
+                "I DON'T KNOW YOU!",
+                "I'M NOT TALKING TO YOU!",
+                "WHIPPER SNAPPER!, GET OFF MY LAWN!",
+                "I'M TOO OLD FOR THIS!",
+                "I'M NOT IN THE MOOD!",
+            ]
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+            return False
+        else:
+            return True
 
     @app_commands.command()
     @app_commands.describe(item="The item you want to get information about.", depth="How many weeks you want to go back in time.")
@@ -65,8 +84,8 @@ class Market(commands.GroupCog, name="market",):
             await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
             return
         
-        await interaction.response.defer(thinking=True)
-
+        await interaction.response.send_message("Alrighty gimmie a minute to find where I put that information!")
+        delay = random.randint(1, 300)
         selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
         logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user}")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
@@ -77,13 +96,18 @@ class Market(commands.GroupCog, name="market",):
             await interaction.followup.send(
                 embed=user_instance.embed,
                 view=user_instance.view(self.bot, is_tracking=tracking),
-                ephemeral=True
+                # ephemeral=True
             )
         else:
             await interaction.followup.send(
                 embed=user_instance.embed,
-                ephemeral=True
+                # ephemeral=True
             )
+
+    @user.error
+    async def user_error(self, interaction: discord.Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            logger.warning(f"Command failed cause of April Fools.")
 
     @user.autocomplete("vendor")
     async def user_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:

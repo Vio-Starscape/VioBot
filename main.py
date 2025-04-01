@@ -96,6 +96,12 @@ async def stats(interaction: discord.Interaction):
         name="Users",
         value=f"Count: {vio.application.approximate_user_install_count}"
     )
+    embed.add_field(
+        name="Changes",
+        value="Where am I, Hold up it gon take me a bit to do all this processing and thinking. I ain't in my prime anymore."
+        "\nDoctor said it could take me up to 5 minutes to do all that math nowa days. I'm just a old bot, I can't do all that math.\n"
+        "Also LEAVE ME ALONE!! WHIPPER SNAPPER! (From Meaning: \"Bot still works, just a bit slow >:). All will be good again tonight.\")"
+    )
     embed.set_footer(
         text=f"Version: {os.getenv('VERSION')}"
     )
