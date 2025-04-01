@@ -18,7 +18,7 @@ class Vio(commands.Bot):
         )
         self.main_guild = discord.Object(id=int(os.getenv("MAIN_GUILD_ID")))
         self.affiliation_channel = int(os.getenv("AFFILIATION_CHANNEL"))
-        self.testing = os.getenv("TESTING") == "True"
+        self.TESTING = os.getenv("TESTING") == "True"
         self.db = VioDB(db_uri, database)
         self.up_time = discord.utils.utcnow()
 
@@ -31,9 +31,10 @@ class Vio(commands.Bot):
         )
 
         logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
+        logger.info(f"Connected to {self.application.approximate_user_install_count} Users directly!")
         logger.info(f"Connected to {len(self.guilds)} guilds!")
         logger.info("-"*20)
-        for guild in sorted(self.guilds, key=lambda g: g.me.joined_at):
+        for guild in sorted(self.guilds, key=lambda g: g.me.joined_at if g.me else None):
             logger.info(f"\t{guild.name} (ID: {guild.id})")
         logger.info("-"*20)
 
@@ -51,14 +52,13 @@ class Vio(commands.Bot):
         await self.load_extension("ext.Market")
         await self.load_extension("ext.Valuation")
         await self.load_extension("ext.VioExclusive")
-        if not self.testing: # Do not want to start pinging people if I am just testing with Prod DB (Testing DB does not have up to date stats)
-            await self.load_extension("ext.Undercut")
+        await self.load_extension("ext.Undercut")
         await self.tree.sync()
         await self.tree.sync(guild=self.main_guild)
 
         self.update.start()
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(seconds=20)
     async def update(self):
         """Update task
 
@@ -80,7 +80,8 @@ async def stats(interaction: discord.Interaction):
 
     embed = discord.Embed(
         title="General Information",
-        description="Here is some general information regarding Vio.\nCreated by `Meaning`",
+        url="https://v-io.info/",
+        description="Here is some general information regarding Vio.\nSupport me [here](https://ko-fi.com/meaning)\nCreated by `Meaning`",
         color=discord.Color.blurple()
     )
     embed.add_field(
@@ -89,7 +90,11 @@ async def stats(interaction: discord.Interaction):
     )
     embed.add_field(
         name="Guilds",
-        value=f"Count: {len(vio.guilds)}"
+        value=f"Count: {vio.application.approximate_guild_count}"
+    )
+    embed.add_field(
+        name="Users",
+        value=f"Count: {vio.application.approximate_user_install_count}"
     )
     embed.add_field(
         name="Changes",
@@ -103,6 +108,10 @@ async def stats(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 if __name__ == "__main__":
+    # DEBUG:
+    # ext_logger = logging.getLogger('ext.Undercut')
+    # ext_logger.setLevel(logging.DEBUG)
+
     vio.run(
         os.getenv("BOT_TOKEN"), 
         root_logger=True,

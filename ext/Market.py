@@ -9,7 +9,9 @@ from main import Vio
 
 logger = logging.getLogger(__name__)
 
-class Market(commands.GroupCog, name="market"):
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+class Market(commands.GroupCog, name="market",):
     
     def __init__(self, bot: Vio):
         self.bot = bot
@@ -32,31 +34,29 @@ class Market(commands.GroupCog, name="market"):
             return True
 
     @app_commands.command()
-    async def item(self, interaction: discord.Interaction, item: str):
+    @app_commands.describe(item="The item you want to get information about.", depth="How many weeks you want to go back in time.")
+    async def item(self, interaction: discord.Interaction, item: str, depth: app_commands.Range[int, 1, 36] = 4):
         """Get information about an item."""
         if item not in self.bot.items:
             await interaction.response.send_message("I haven't seen that item before! ;-;", ephemeral=True)
             return
-        # await interaction.response.defer(thinking=True)
-        await interaction.response.send_message("Alrighty gimmie a minute to find where I put that information!")
-        delay = random.randint(1, 300)
-        logger.info(f"Getting information about item: {item} | By: {interaction.user} | "
-                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
-                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id}) | Delay: {delay} seconds")
-        await asyncio.sleep(delay)
-        items = await self.bot.db.get_item_history(item, depth=2010)
-        selected = items.latest_usable()
-        await interaction.followup.send(
-            # view=items.view,
-            embed=selected.embed.set_image(url="attachment://graph.png"), 
-            # ephemeral=True,
-            file=await items.graph()
-        )
-    
-    @item.error
-    async def item_error(self, interaction: discord.Interaction, error: Exception):
-        if isinstance(error, commands.CheckFailure):
-            logger.warning(f"Command failed cause of April Fools.")
+        await interaction.response.defer(thinking=True)
+        logger.info(f"Getting information about item: {item} | By: {interaction.user} | Depth: {depth}")
+        try:
+            items = await self.bot.db.get_item_history_after_date(item, depth=depth)
+            selected = items.latest_usable()
+            await interaction.followup.send(
+                # view=items.view,
+                embed=selected.embed.set_image(url="attachment://graph.png"), 
+                ephemeral=True,
+                file=await items.graph()
+            )
+        except ValueError:
+            item = await self.bot.db.get_latest_valid_market_for_item_before(10_000_000, item=item)
+            await interaction.followup.send(
+                embed=item.embed,
+                ephemeral=True,
+            )
 
     @item.autocomplete("item")
     async def item_autocomplete(self, ctx: commands.Context, item: str):
@@ -87,14 +87,10 @@ class Market(commands.GroupCog, name="market"):
         await interaction.response.send_message("Alrighty gimmie a minute to find where I put that information!")
         delay = random.randint(1, 300)
         selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
-        logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user} | "
-                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name}"
-                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id}) | Delay: {delay} seconds")
-        await asyncio.sleep(delay)
-
+        logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user}")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)
 
-        if await self.bot.db.does_user_have_undercut_permission(interaction.user.id):
+        if await self.bot.db.is_user_allowed_undercut(interaction.user.id):
             tracking = await self.bot.db.is_user_tracking_account(interaction.user.id, selected_user.id)
 
             await interaction.followup.send(

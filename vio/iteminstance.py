@@ -1,4 +1,5 @@
 import discord
+import random
 import numpy as np
 from pydantic import BaseModel, Field, validator
 from datetime import datetime, timedelta
@@ -47,7 +48,16 @@ class ItemInstance(BaseModel):
             matching_listing = previous_buy.get(listing.user.id)
             if matching_listing:
                 if matching_listing.price == listing.price and matching_listing.amount == listing.amount:
-                    pass
+                    buy_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.NO_CHANGE,
+                            price=listing.price,
+                            amount=listing.amount,
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
+                        )
+                    )
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
                     buy_changes.append(
                         ListingChange(
@@ -88,7 +98,7 @@ class ItemInstance(BaseModel):
                         price=listing.price,
                         amount=listing.amount,
                         user=listing.user,
-                        original=listing
+                        previous=listing
                     )
                 )
 
@@ -97,11 +107,20 @@ class ItemInstance(BaseModel):
             matching_listing = previous_sell.get(listing.user.id)
             if matching_listing:
                 if matching_listing.price == listing.price and matching_listing.amount == listing.amount:
-                    pass
+                    sell_changes.append(
+                        ListingChange(
+                            type=MarketChangeType.NO_CHANGE,
+                            price=listing.price,
+                            amount=listing.amount,
+                            user=listing.user,
+                            original=listing,
+                            previous=matching_listing
+                        )
+                    )
                 elif matching_listing.price == listing.price and matching_listing.amount > listing.amount:
                     sell_changes.append(
                         ListingChange(
-                            type=MarketChangeType.NEW,
+                            type=MarketChangeType.SOLD,
                             price=listing.price,
                             amount=listing.amount,
                             user=listing.user,
@@ -137,7 +156,8 @@ class ItemInstance(BaseModel):
                         type=MarketChangeType.COMPLETED,
                         price=listing.price,
                         amount=listing.amount,
-                        user=listing.user
+                        user=listing.user,
+                        previous=listing
                     )
                 )
 
@@ -226,7 +246,7 @@ class ItemInstance(BaseModel):
         if len(self.sell) == 0:
             item_embed.add_field(name="Sell Listings", value="No sell listings.", inline=True)
         else:
-            sell_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in self.sell])
+            sell_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in random.shuffle(self.sell)])
             if len(sell_listings_str) > 1024:
                 sell_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by **{listing.user.name}**" for listing in self.sell])
             item_embed.add_field(name="Sell Listings", value=sell_listings_str, inline=True)
@@ -234,7 +254,7 @@ class ItemInstance(BaseModel):
         if len(self.buy) == 0:
             item_embed.add_field(name="Buy Listings", value="No buy listings.", inline=True)
         else:
-            buy_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in self.buy])
+            buy_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in random.shuffle(self.buy)])
             if len(buy_listings_str) > 1024:
                 buy_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by **{listing.user.name}**" for listing in self.buy])
 

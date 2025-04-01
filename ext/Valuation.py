@@ -21,6 +21,8 @@ class Valuation(commands.Cog):
 
     @app_commands.command(description="Given an image of your inventory, I will evaluate the value of your items.")
     @app_commands.describe(flex="Whether or not you want to flex your wealth.", processed_images="Whether or not you want to see the processed images.")
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def evaluation(self, 
                          interaction: discord.Interaction,
                          image1: discord.Attachment, 
@@ -63,9 +65,7 @@ class Valuation(commands.Cog):
         #     return
 
         await interaction.response.defer(thinking=True, ephemeral=(not flex))
-        logger.info(f"Getting valuation of items. By: {interaction.user} | "
-                    f"In: {interaction.guild.name if interaction.guild else interaction.channel.recipient.name} "
-                    f" (ID: {interaction.guild.id if interaction.guild else interaction.channel.id})" +
+        logger.info(f"Getting valuation of items. By: {interaction.user}" +
                     "".join([f"\n\tAttachment: {inventory.filename}, {inventory.content_type}, {inventory.size}"
                              for inventory in images])
                     )
@@ -77,7 +77,7 @@ class Valuation(commands.Cog):
         embeds = [
             discord.Embed(
                 title="Valuation",
-                description="This command is currently in Beta. All images are saved and used for future training. Some item names or Amount could be incorrect.",
+                description="This command is currently in Beta. Some item names or Amount could be incorrect.",
                 color=0xFF0000
             )
         ]
@@ -185,12 +185,6 @@ class Valuation(commands.Cog):
             buffered_format = BytesIO()
             image.save(buffered_format, format="PNG")
             buffered_format.seek(0)
-
-            await self.bot.db.upload_test_material(
-                response=response_dict,
-                orig_image=img_original,
-                pros_image=image
-            )
 
             if processed_images:
                 image_files.append(discord.File(fp=buffered_format, filename=f"img{i}.png"))

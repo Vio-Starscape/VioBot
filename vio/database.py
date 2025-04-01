@@ -1,7 +1,8 @@
 import asyncio
+import discord
 import logging
-from datetime import timezone
-from typing import Optional
+from datetime import timezone, date, datetime, timedelta
+from typing import Optional, TYPE_CHECKING
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from .marketinstance import MarketInstance
@@ -9,9 +10,13 @@ from .iteminstance import ItemInstance
 from .historyinstance import MarketHistoryInstance
 from .robloxuser import RobloxUser
 from .userinstance import UserInstance
+from .clientsettings import VioUser, TrackedUserMarketSettings
 
 from PIL import Image
 from io import BytesIO
+
+if TYPE_CHECKING:
+    from main import Vio
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +41,9 @@ class VioDB:
             await resources_collection.insert_one({"_id": 0, "count": 0})
         if "Info" not in collection_names:
             logger.info("Creating Info collection!")
-            await self.db.create_collection("Info")
-        if "Evaluation" not in collection_names:
-            logger.info("Creating Evaluation collection!")
-            await self.db.create_collection("Evaluation")
+            info_collection = await self.db.create_collection("Info")
+            info_collection.insert_one({"_id": 0, "items": []})
+            info_collection.insert_one({"_id": 1, "count": 0})
         if "Permissions" not in collection_names:
             logger.info("Creating Permissions collection!")
             await self.db.create_collection("Permissions")
@@ -53,7 +57,7 @@ class VioDB:
         market_data["time_scanned"] = market_data["time_scanned"].replace(tzinfo=timezone.utc)
         return market_data
 
-    async def insert_roblox_users_to_market(self, market_data: dict, roblox_users: Optional[dict] = None, *, update: bool = False) -> None:
+    async def insert_roblox_users_to_market(self, market_data: dict, roblox_users: Optional[dict] = None) -> None:
         """Insert Roblox Users into the market data.
         
         This function will replace the Vendor ID with a Roblox User Object instead of the ID.
@@ -82,13 +86,13 @@ class VioDB:
         """Get the current count of market scans."""
         return (await self.db["Market"].find_one({"_id": 0}))["count"]
     
-    async def get_market_at_index(self, index: int, *, update: bool = False) -> MarketInstance:
+    async def get_market_at_index(self, index: int) -> MarketInstance:
         """Get the market at a specific index."""
         logger.debug(f"Getting market at index: {index}!")
         market = await self.db["Market"].find_one({"_id": index})
 
         # Inject Roblox Users into Market Data
-        completed_market_data = await self.insert_roblox_users_to_market(market, update=update)
+        completed_market_data = await self.insert_roblox_users_to_market(market)
 
         # Validate Timestamp
         completed_market_data = await self.validate_timestamp(completed_market_data)
@@ -98,9 +102,9 @@ class VioDB:
     async def get_current_market(self) -> MarketInstance:
         """Get the latest market scan."""
         logger.debug("Getting current market!")
-        count = (await self.get_current_count())-1
+        count = await self.get_current_count()
 
-        market = await self.get_market_at_index(count, update=True)
+        market = await self.get_market_at_index(count)
 
         return market
     
@@ -136,48 +140,106 @@ class VioDB:
     async def get_last_undercut_check(self) -> int:
         """Get the last undercut check."""
         logger.debug("Getting last undercut check!")
-        return (await self.db["Tracking"].find_one({"_id": 0}))["count"]
+        return (await self.db["Info"].find_one({"_id": 1}))["count"]
         
     async def set_last_undercut_check(self, count: int) -> None:
         """Set the last undercut check."""
         logger.debug(f"Setting last undercut check to: {count}!")
-        await self.db["Tracking"].update_one({"_id": 0}, {"$set": {"count": count}}, upsert=True)
+        await self.db["Info"].update_one({"_id": 1}, {"$set": {"count": count}}, upsert=True)
+
+    async def is_user_allowed_undercut(self, user_id: int) -> bool:
+        """Check if a user is allowed to undercut."""
+        logger.debug(f"Checking if user: {user_id} is allowed to undercut! (True)")
+        return True
+        value = await self.db["Permissions"].find_one({"_id": user_id})
+        return value is not None and value.get('permissions', {}).get("undercut", False)
     
-    async def get_users_tracked_accounts(self) -> list[dict[int, list[int]]]:
+    async def update_user_settings(self, user_id: int, tracked_id:int,  settings: TrackedUserMarketSettings) -> None:
+        """Update a users settings."""
+        logger.debug(f"Updating user settings for user: {user_id}!")
+        await self.db["Permissions"].update_one(
+            {"_id": user_id},
+            {"$set": {f"tracked_users.{tracked_id}": settings.model_dump()}},
+            upsert=True
+        )
+
+    async def get_users_settings(self, user: discord.User, bot: discord.Client, *, roblox_list: list[RobloxUser] = None) -> VioUser:
+        """Get a users settings."""
+        logger.debug(f"Getting user settings for user: {user.name}!")
+        if roblox_list is None:
+            roblox_list = await self.get_roblox_users()
+        user_setting = await self.db["Permissions"].find_one({"_id": user.id}) or {}
+        new_roblox_list = {
+            next((i for i in roblox_list if i.id == int(roblox_id)), None): settings
+            for roblox_id, settings in user_setting.get("tracked_users", {}).items() 
+        }
+        user_setting["tracked_users"] = new_roblox_list
+        user_setting["discord_user"] = user
+        return VioUser(**user_setting)
+    
+    async def get_users_tracked_accounts(self, bot: "Vio", roblox_list: list[RobloxUser] = None) -> list[VioUser]:
         """Get all users and their tracked accounts."""
         logger.debug("Getting all users and their tracked accounts!")
-        users_with_permissions = [i["_id"] async for i in self.db["Permissions"].find() if i.get("undercut", False)]
-        return [doc async for doc in self.db["Tracking"].find({"_id": {"$ne": 0}}) if doc["_id"] in users_with_permissions]
-    
-    async def does_user_have_undercut_permission(self, user_id: int) -> bool:
-        """Check if a user has undercut permission."""
-        logger.debug(f"Checking if user: {user_id} has undercut permission!")
-        value = await self.db["Permissions"].find_one({"_id": user_id})
-        return value is not None and value.get("undercut", False)
+        users_permissions = []
+        if roblox_list is None:
+            roblox_list = await self.get_roblox_users()
+        async for doc in self.db["Permissions"].find():
+            user = bot.get_user(doc["_id"])
+            if user is None:
+                user = await bot.fetch_user(doc["_id"])
+            user_setting = await self.db["Permissions"].find_one({"_id": user.id}) or {}
+            new_roblox_list = {
+                next((i for i in roblox_list if i.id == int(roblox_id)), None): settings
+                for roblox_id, settings in user_setting.get("tracked_users", {}).items() 
+            }
+            user_setting["tracked_users"] = new_roblox_list
+            user_setting["discord_user"] = user
+            users_permissions.append(VioUser(**user_setting))
+        return users_permissions
     
     async def is_user_tracking_account(self, user_id: int, account_id: int) -> bool:
         """Check if a user is tracking an account."""
         logger.debug(f"Checking if user: {user_id} is tracking account: {account_id}!")
-        value = await self.db["Tracking"].find_one({"_id": user_id, "accounts": {"$in": [account_id]}})
+        value = await self.db["Permissions"].find_one({"_id": user_id, f"tracked_users.{account_id}": {"$exists": True}})
         return value is not None
     
     async def add_tracked_account(self, user_id: int, account_id: int) -> None:
         """Add a tracked account to a user."""
         logger.debug(f"Adding tracked account: {account_id} to user: {user_id}!")
-        await self.db["Tracking"].update_one({"_id": user_id}, {"$push": {"accounts": account_id}}, upsert=True)
+        await self.db["Permissions"].update_one(
+            {"_id": user_id},
+            {"$set": {f"tracked_users.{account_id}": {
+                "undercut": True,
+                "overcut": True,
+                "completion": False,
+                "new": False,
+                "top_only": False,
+                "market": {
+                    "active": False,
+                    "markets": []
+                }
+            }}},
+            upsert=True # Needed to create the document if it doesn't exist.
+        )
 
     async def remove_tracked_account(self, user_id: int, account_id: int) -> None:
         """Remove a tracked account from a user."""
         logger.debug(f"Removing tracked account: {account_id} from user: {user_id}!")
-        await self.db["Tracking"].update_one({"_id": user_id}, {"$pull": {"accounts": account_id}})
+        await self.db["Permissions"].update_one(
+            {"_id": user_id},
+            {"$unset": {f"tracked_users.{account_id}": ""}}
+        )
 
-    async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> MarketInstance:
+    async def get_latest_valid_market_for_item_before(self, count: int, item: str) -> ItemInstance:
         """Get the latest valid market for an item before a certain count."""
         logger.debug(f"Getting latest valid market for item: {item} before count: {count}!")
 
         market = await self.db["Market"].find_one({"_id": {"$lt": count}, f"items.{item}": {"$exists": True}}, sort=[("_id", -1)])
+        if market is None:
+            return None
         market = await self.insert_roblox_users_to_market(market)
         market = await self.validate_timestamp(market)
+
 
         return MarketInstance(**market)[item]
 
@@ -219,7 +281,50 @@ class VioDB:
         await asyncio.gather(*tasks)
 
         return MarketHistoryInstance(item_instances)
+    
+    async def get_item_history_after_date(self, item: str, *, depth: Optional[int] = 4 ) -> MarketHistoryInstance:
+        """Get the history of an item after a specific date.
+        
+        Args:
+            item (str): The item to get the history for.
+            depth (Optional[int]): The depth to get the history for. Defaults to Complete History.
+        """
 
+        logger.debug(f"Getting item history: {item}!")
+
+        async def process_document(document: dict, item_name: str, final_dict: dict, roblox: dict):
+            """Process a document and add it to the final dict."""
+            market_data = await self.insert_roblox_users_to_market(document, roblox)
+            market_data = await self.validate_timestamp(market_data)
+
+            item_instance = MarketInstance(**market_data)[item_name]
+
+            final_dict[item_instance.id] = item_instance
+
+        # Get all roblox users and store them in a dict so that we can use them for every document.
+        # This is going to greatly reduce the amount of requests we make to the database.
+        roblox_users = {doc["_id"]: doc async for doc in self.db["Roblox"].find()}
+
+        # Create a dict to store all the item instances.
+        item_instances = {}
+
+        # Create a list of tasks to run.
+        # This will allow us to run all the tasks at the same time.
+        # This is going to greatly reduce the amount of time it takes to process all the data.
+        tasks = []
+        
+        date_limit = (datetime.now(timezone.utc) - timedelta(weeks=depth)).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        
+        async for doc in self.db["Market"].find(
+            {"time_scanned": {"$gt": date_limit}, f"items.{item}": {"$exists": True}},
+            {"_id": 1, "time_scanned": 1, f"items.{item}": 1}):
+            tasks.append(process_document(doc, item, item_instances, roblox_users))
+        await asyncio.gather(*tasks)
+
+        return MarketHistoryInstance(item_instances)
+        
+        
     async def get_item_list(self) -> list[str]:
         """Get a list of all items in the market."""
         logger.debug("Getting item list!")
@@ -234,27 +339,6 @@ class VioDB:
         if perms is None:
             return False
         return perms["evaluation"]
-
-    async def upload_test_material(self, response: dict, orig_image: Image.Image, pros_image: Image.Image) -> None:
-        """Upload test material to the database."""
-        logger.debug("Uploading test material!")
-
-        orig_img_bytes = BytesIO()
-        orig_image.save(orig_img_bytes, format="PNG")
-        orig_img_bytes.seek(0)
-
-        pros_img_bytes = BytesIO()
-        pros_image.save(pros_img_bytes, format="PNG")
-        pros_img_bytes.seek(0)
-
-
-        data = {
-            "info": response,
-            "image": orig_img_bytes.getvalue(),
-            "processed": pros_img_bytes.getvalue()
-        }
-
-        await self.db["Evaluation"].insert_one(data)
     
     async def get_filtered_item_list(self, items: list[str]) -> dict[str, float]:
         """Get a list of all items in the market that match a filter."""

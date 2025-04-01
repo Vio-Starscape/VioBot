@@ -7,8 +7,7 @@ astor==0.8.1
 attrs==23.2.0
 cattrs==23.2.3
 Cython==0.29.20
-discord==2.3.2
-discord.py==2.3.2
+discord.py==2.5.2
 dnspython==2.5.0
 frozenlist==1.4.1
 fuzzywuzzy==0.18.0
