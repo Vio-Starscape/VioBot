@@ -1,4 +1,5 @@
 import discord
+import random
 import numpy as np
 from pydantic import BaseModel, Field, validator
 from datetime import datetime, timedelta
@@ -245,7 +246,7 @@ class ItemInstance(BaseModel):
         if len(self.sell) == 0:
             item_embed.add_field(name="Sell Listings", value="No sell listings.", inline=True)
         else:
-            sell_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in self.sell])
+            sell_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in random.shuffle(self.sell)])
             if len(sell_listings_str) > 1024:
                 sell_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by **{listing.user.name}**" for listing in self.sell])
             item_embed.add_field(name="Sell Listings", value=sell_listings_str, inline=True)
@@ -253,7 +254,7 @@ class ItemInstance(BaseModel):
         if len(self.buy) == 0:
             item_embed.add_field(name="Buy Listings", value="No buy listings.", inline=True)
         else:
-            buy_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in self.buy])
+            buy_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by [{listing.user.name}]({listing.user.roblox_tiny_profile})" for listing in random.shuffle(self.buy)])
             if len(buy_listings_str) > 1024:
                 buy_listings_str = "\n".join([f"{listing.amount:,} @ {listing.price:,.2f} by **{listing.user.name}**" for listing in self.buy])
 
