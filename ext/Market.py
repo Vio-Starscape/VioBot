@@ -16,23 +16,6 @@ class Market(commands.GroupCog, name="market",):
     def __init__(self, bot: Vio):
         self.bot = bot
 
-    async def interaction_check(self, interaction: discord.Interaction):
-        if random.randint(0, 1) != 1:
-            logger.warning(f"Command failed cause of April Fools.")
-            responses = [
-                "WHERE AM I, WHO ARE YOU?!",
-                "WHAT DO YOU WANT FROM ME?!",
-                "I DON'T KNOW YOU!",
-                "I'M NOT TALKING TO YOU!",
-                "WHIPPER SNAPPER!, GET OFF MY LAWN!",
-                "I'M TOO OLD FOR THIS!",
-                "I'M NOT IN THE MOOD!",
-            ]
-            await interaction.response.send_message(random.choice(responses), ephemeral=True)
-            return False
-        else:
-            return True
-
     @app_commands.command()
     @app_commands.describe(item="The item you want to get information about.", depth="How many weeks you want to go back in time.")
     async def item(self, interaction: discord.Interaction, item: str, depth: app_commands.Range[int, 1, 36] = 4):
@@ -84,8 +67,6 @@ class Market(commands.GroupCog, name="market",):
             await interaction.response.send_message("I haven't seen that user before! ;-;", ephemeral=True)
             return
         
-        await interaction.response.send_message("Alrighty gimmie a minute to find where I put that information!")
-        delay = random.randint(1, 300)
         selected_user = next(roblox_user for roblox_user in self.bot.roblox_users if roblox_user.id == vendor)
         logger.info(f"Getting information about user: {selected_user.name} | By: {interaction.user}")
         user_instance = await self.bot.db.get_current_market_for_user(selected_user)

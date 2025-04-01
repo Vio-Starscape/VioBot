@@ -44,18 +44,6 @@ class Valuation(commands.Cog):
 
         ## COMMAND IS NOW PUBLIC - 25/03/2024 @ 11:09 PM EST
         # if not await self.bot.db.is_user_allowed_evaluation(interaction.user.id):
-        if random.randint(0, 1) != 1:
-            responses = [
-                "WHERE AM I, WHO ARE YOU?!",
-                "WHAT DO YOU WANT FROM ME?!",
-                "I DON'T KNOW YOU!",
-                "I'M NOT TALKING TO YOU!",
-                "WHIPPER SNAPPER!, GET OFF MY LAWN!",
-                "I'M TOO OLD FOR THIS!",
-                "I'M NOT IN THE MOOD!",
-            ]
-            await interaction.response.send_message(random.choice(responses), ephemeral=True)
-            return
         #     logger.info(f"User {interaction.user} tried to use the evaluation command, but does not have access.")
         #     await interaction.response.send_message(
         #         "You are not allowed to use this command!\n\n"
