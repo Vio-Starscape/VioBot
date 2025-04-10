@@ -359,7 +359,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                     
                     # Get all the users who were undercut
                     undercut_users: list[Listing] = []
-                    for i in item_instance.sell:
+                    for i in item_instance.buy:
                         if i.price < change.original.price:
                             undercut_users.append(i)
                     seen = set()
