@@ -18,6 +18,8 @@ class RobloxUser(BaseModel):
 
     @root_validator(pre=True)
     def set_default_profiles(cls, values):
+        if not isinstance(values, dict):
+            return values
         id_ = values.get('_id')
         if id_ is not None:
             values['roblox_profile'] = f"https://www.roblox.com/users/{id_}/profile"

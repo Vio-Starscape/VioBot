@@ -350,7 +350,7 @@ class Undercutter(commands.GroupCog, name="undercut"):
                 if change.type == MarketChangeType.NEW: #If the sell change is a New Listing
                     logger.debug(f"{change.original.user.name} listed {change.original.amount} {item} for {change.original.price:,.2f}!")
 
-                    # Get users who are tracking the person who undercut
+                    # Get users who are tracking the person who overcut
                     tracked = filter(lambda x: change.original.user in x.tracked_users.keys(), tracked_accounts)
                     for account in tracked:
                         settings = account.tracked_users[change.original.user]
@@ -358,12 +358,12 @@ class Undercutter(commands.GroupCog, name="undercut"):
                             tasks.setdefault(account, []).append(self.__new_listing(item, change.original, item_instance.buy))
                     
                     # Get all the users who were undercut
-                    undercut_users: list[Listing] = []
+                    overcut_users: list[Listing] = []
                     for i in item_instance.buy:
                         if i.price < change.original.price:
-                            undercut_users.append(i)
+                            overcut_users.append(i)
                     seen = set()
-                    unique = [x for x in undercut_users if x.user.id not in seen and not seen.add(x.user.id)] # Remove duplicates
+                    unique = [x for x in overcut_users if x.user.id not in seen and not seen.add(x.user.id)] # Remove duplicates
 
                     for user in unique:
                         logger.debug(f"{user.user.name} got undercut by {change.original.user.name} in {item}!")

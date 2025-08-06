@@ -67,18 +67,23 @@ class VioDB:
 
         logger.debug(f"Inserting Roblox users to market!")
         for value in market_data["items"].values():
+            new_buy = []
             for listing in value["buy"]:
                 try:
                     listing[2] = roblox_users[listing[2]]
+                    new_buy.append(listing)
                 except KeyError:
                     logger.warning(f"User not found in database: {listing[2]}. Removing from output!")
-                    value["buy"].remove(listing)
+            value["buy"] = new_buy
+
+            new_sell = []
             for listing in value["sell"]:
                 try:
                     listing[2] = roblox_users[listing[2]]
+                    new_sell.append(listing)
                 except KeyError:
                     logger.warning(f"User not found in database: {listing[2]}. Removing from output!")
-                    value["sell"].remove(listing)
+            value["sell"] = new_sell
         logger.debug(f"Completed: {market_data}")
         return market_data
     
